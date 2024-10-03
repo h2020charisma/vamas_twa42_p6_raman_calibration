@@ -30,6 +30,7 @@ tasks:
       si_tag: "S0B"
       pst_tag: "PST"
       test_tags: "nCal,sCal"      
+      fit_peaks: "{{fit_peaks}}"
 
   - source: templates_assessment.py
     name: templates_assessment-[[pst_tag]]  

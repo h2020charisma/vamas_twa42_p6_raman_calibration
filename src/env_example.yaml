@@ -1,3 +1,4 @@
 config_templates: "config_pipeline.json"
 config_root: "D:\\nina\\DATA\\charisma\\Data Raman RR1"
 config_output :  "D:\\nina\\DATA\\charisma\\Data Raman RR1\\output"
+fit_peaks: False

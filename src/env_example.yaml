@@ -1,4 +1,6 @@
+# This file will be expected in the config_root folder
 config_templates: "config_pipeline.json"
+
 config_root: "CHANGEIT\\Nextcloud\\Projects\\CHARISMA\\Data Raman RR1"
 config_output :  "CHANGEIT\\Nextcloud\\Projects\\CHARISMA\\Data Raman RR1\\output"
 

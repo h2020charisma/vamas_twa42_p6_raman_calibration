@@ -1,0 +1,9 @@
+tasks:
+
+  - source: templates_prefill.py
+    product: 
+      nb: "products/templates_prefill.ipynb"
+      data: "{{config_root_output}}/templates"
+    params:
+      config_root: "{{config_root}}"
+      data_folders: "{{data_folders}}"

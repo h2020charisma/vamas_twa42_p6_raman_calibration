@@ -30,12 +30,14 @@ Path(os.path.dirname(product["h5"])).mkdir(parents=True, exist_ok=True)
 df_merged_list = []
 
 for key in _config["templates"]:
-    print(key)
+    
     _path = os.path.join(config_root,key)
     df = pd.read_excel(_path, sheet_name='Files')
+    print(key,df.columns)
     df.columns = ['sample', 'measurement', 'filename', 'optical_path', 'laser_power_percent','laser_power_mw', 'integration_time_ms',
               'humidity', 'temperature', 'date', 'time']
     df_meta = pd.read_excel(_path, sheet_name='Front sheet', skiprows=4)
+    print("meta",df_meta.columns)
     df_meta.columns = ['optical_path', 'instrument_make', 'instrument_model', 'wavelength','collection_optics','slit_size','grating','pin_hole_size','collection_fibre_diameter','notes','max_laser_power_mw']    
     df_merged = pd.merge(df, df_meta, on='optical_path', how='left')
 

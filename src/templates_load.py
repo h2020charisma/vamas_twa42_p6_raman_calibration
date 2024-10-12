@@ -80,7 +80,7 @@ for op in unique_optical_paths:
         print(op,"No Si")
         continue
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15,2))    
+    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15,2))    
     fig.suptitle("{} {} {}".format(op,provider,wavelength))
     _path = os.path.join(product["data"],str(int(wavelength)))
     Path(_path).mkdir(parents=True, exist_ok=True)
@@ -118,7 +118,7 @@ for op in unique_optical_paths:
     for tag in test_tags.split(","):
         spe = read_tag(op_meta,tag,_path,boundaries=None,baseline=True, normalize = True,trim_left=trim_left)
         if spe is not None:
-            spe.plot(label=tag,ax=ax2,color="#AAAAAA")
+            spe.plot(label=tag,ax=ax3)
 
     ax1.set_title(neon_tag)
     ax2.set_title("")

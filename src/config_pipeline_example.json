@@ -1,43 +1,11 @@
 {
     "templates" : [
-        "Template Raman Reporting_ELODIZ.xlsx",
-        "Template Raman Reporting_FNMT-M.xlsx",
-        "Template Raman Reporting_ICV_CSIC.xlsx",
-        "Template Raman Reporting_LBF_532.xlsx",
-        "Template Raman Reporting_NTUA.xlsx",
-        "Template Raman Reporting_TOPSOE.xlsx"
+        {"template" : "myfolder/Template Raman Reporting_CHARISMA.xlsx" ,"path" : "myfolder/csv/"}
     ],
 	"options" : {
-		"Glacier532_532_" : {
+		"OP_1" : {
 			"notes" : "Negative Neon lines",
 			"enable" : false
-		},			
-		"Glacier785_785_" : {
-			"enable" : false
-		},
-		"ZLM896_532_" : {
-			"notes" : "calibration issue to debug",
-			"enable" : false
-		},
-		"iRaman_532_x20" : {
-			"notes" : "calibration issue to debug",
-			"enable" : false			
-		},
-		"Ho785_785_OP01" : {
-			"notes" : "calibration issue to debug",
-			"enable" : false			
-		},
-		"Zo785_785_" : {
-			"notes" : "calibration issue to debug",
-			"enable" : false			
-		},
-		"Re785_785_x20" : {
-			"notes" : "calibration issue to debug",
-			"enable" : false			
-		},
-		"Wasatch_532_" : {
-			"notes" : "calibration issue to debug",
-			"enable" : true						
 		}
 	}
 }

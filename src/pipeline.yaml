@@ -2,7 +2,7 @@ tasks:
 
   - source: templates_read.py
     product: 
-      nb: "products/templates_read.ipynb"
+      nb: "{{config_output}}/templates_read.html"
       h5: "{{config_output}}\\templates_read.h5"
       xlsx: "{{config_output}}\\templates_read.xlsx"
     params:
@@ -11,25 +11,25 @@ tasks:
 
   - source: templates_load.py
     product: 
-      nb: "products/templates_load.ipynb"
+      nb: "{{config_output}}/templates_load.html"
       data: "{{config_output}}/templates_load"
     params:
       config_root: "{{config_root}}"    
-      neon_tag: "Neon"
-      si_tag: "S0B"
-      pst_tag: "PST"
-      test_tags: "nCal,sCal"
+      neon_tag: "{{ne_tag}}"
+      si_tag: "{{si_tag}}"
+      pst_tag: "{{pst_tag}}"
+      test_tags: "{{test_tags}}"
 
   - source: templates_calibration.py
     product: 
-      nb: "products/templates_calibration.ipynb"
+      nb: "{{config_output}}/templates_calibration.html"
       data: "{{config_output}}/templates_calibration"
     params:
       config_root: "{{config_root}}"    
-      neon_tag: "Neon"
-      si_tag: "S0B"
-      pst_tag: "PST"
-      test_tags: "nCal,sCal"      
+      neon_tag: "{{ne_tag}}"
+      si_tag: "{{si_tag}}"
+      pst_tag: "{{pst_tag}}"
+      test_tags: "{{test_tags}}" 
       fit_peaks: "{{fit_peaks}}"
 
   - source: templates_assessment.py
@@ -38,8 +38,8 @@ tasks:
       nb: "products/templates_assessment-[[pst_tag]].ipynb"
       hnswlib: "{{config_output}}/templates_assessment-[[pst_tag]]"
     params:
-      neon_tag: "Neon"
-      si_tag: "S0B"
+      neon_tag: "{{ne_tag}}"
+      si_tag: "{{si_tag}}"
     grid:
-        pst_tag: ["PST","sCal","nCal","S0B"]
+        pst_tag: ["PST","CAL","S0N","APAP","S0B"]
          

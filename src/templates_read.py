@@ -42,8 +42,16 @@ for key in _config["templates"]:
     _path_excel = os.path.join(config_root,key["template"])
 
     df = pd.read_excel(_path_excel, sheet_name=FILES_SHEET_NAME)
-    print(key,df.columns)
-    df.columns = FILES_SHEET_COLUMNS.split(",")
+    print(key,len(df.columns),df.columns)
+    _FILES_SHEET_COLUMNS = FILES_SHEET_COLUMNS.split(",")
+    print(key,len(_FILES_SHEET_COLUMNS),_FILES_SHEET_COLUMNS)
+
+    if len(_FILES_SHEET_COLUMNS) == len(df.columns):
+        df.columns = _FILES_SHEET_COLUMNS  # Rename all columns
+    else:
+        df.columns = _FILES_SHEET_COLUMNS + df.columns[len(_FILES_SHEET_COLUMNS):].tolist()  
+        # Rename only the first few columns
+
     df['filename'] = df['filename'].apply(lambda f: os.path.join(config_root,key["path"],f))
 
     df_meta = pd.read_excel(_path_excel, sheet_name=FRONT_SHEET_NAME, skiprows=4)

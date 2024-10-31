@@ -1,5 +1,5 @@
 # + tags=["parameters"]
-upstream = ["read_metadata"]
+upstream = ["metadata_read"]
 product = None
 config_root = None
 config_root_output = None
@@ -11,6 +11,8 @@ import re
 import pandas as pd
 from ramanchada2 import spectrum
 import os 
+from pathlib import Path 
+
 
 tags = { '785nm':"wavelength", 
         '532nm':"wavelength", 
@@ -105,60 +107,65 @@ def fuzzy_match(vals,tags):
     return (parsed,parsed_similarity)
 
 
-df=pd.read_excel(upstream["read_metadata"]["data"])
-df.head()
-#fuzzy_match([s for s in basename if s],tags)
+def prefill_templates(file):
+    df=pd.read_excel(upstream["metadata_read"]["data"])
+    df.head()
+    #fuzzy_match([s for s in basename if s],tags)
 
 
-for index, row in df.iterrows():
-    filename_tags = row["basename"].replace(" ","_").split("_")
-    #print(filename_tags,type(filename_tags))
-    (parsed,parsed_similarity) = fuzzy_match(filename_tags,tags)
-    for p in parsed:
-        df.loc[index, p] = parsed[p]
-    df.loc[index,"tags"] = ','.join(filename_tags)
+    for index, row in df.iterrows():
+        filename_tags = row["basename"].replace(" ","_").split("_")
+        #print(filename_tags,type(filename_tags))
+        (parsed,parsed_similarity) = fuzzy_match(filename_tags,tags)
+        for p in parsed:
+            df.loc[index, p] = parsed[p]
+        df.loc[index,"tags"] = ','.join(filename_tags)
 
-df.to_excel(product["metadata_name"],index=False)
+    df.to_excel(product["metadata_name"],index=False)
 
-#folders = df["folder"].unique()
-folders = []
-basename = []
-ext = []
-keys = []
-values = []
-errs = []
-for index, row in df.iterrows():
-    file = os.path.join(row["folder"],'{}{}'.format(row["basename"],row["extension"]))
-    _err = None
-    try:
-        spe = spectrum.from_local_file(file)
-        for key in spe.meta.__root__:
-            #print(key,spe.meta[key].encode('utf-8', errors='ignore'))
-            try:
-                keys.append(key)
-                if isinstance(spe.meta[key], str):
-                    values.append(spe.meta[key].encode('utf-8', errors='ignore').decode())
-                else:
-                    values.append(spe.meta[key])
-                folders.append(row["folder"])
-                basename.append(row["basename"])
-                ext.append(row["extension"])
-                errs.append("")        
-            except Exception as x:
-                print(key,x)
-    except Exception as err:
-        _err = err
-        keys.append("")
-        values.append("")
-        folders.append(row["folder"])
-        basename.append(row["basename"])
-        ext.append(row["extension"])
-        errs.append(_err)         
+    #folders = df["folder"].unique()
+    folders = []
+    basename = []
+    ext = []
+    keys = []
+    values = []
+    errs = []
+    for index, row in df.iterrows():
+        file = os.path.join(row["folder"],'{}{}'.format(row["basename"],row["extension"]))
+        _err = None
+        try:
+            spe = spectrum.from_local_file(file)
+            for key in spe.meta.__root__:
+                #print(key,spe.meta[key].encode('utf-8', errors='ignore'))
+                try:
+                    keys.append(key)
+                    if isinstance(spe.meta[key], str):
+                        values.append(spe.meta[key].encode('utf-8', errors='ignore').decode())
+                    else:
+                        values.append(spe.meta[key])
+                    folders.append(row["folder"])
+                    basename.append(row["basename"])
+                    ext.append(row["extension"])
+                    errs.append("")        
+                except Exception as x:
+                    print(key,x)
+        except Exception as err:
+            _err = err
+            keys.append("")
+            values.append("")
+            folders.append(row["folder"])
+            basename.append(row["basename"])
+            ext.append(row["extension"])
+            errs.append(_err)         
 
-print(values)
-print(len(keys),len(values),len(folders),len(basename),len(ext),len(errs))
-df = pd.DataFrame({"folders" : folders,"basename" : basename,"extension" : ext,"keys" : keys,"values" : values, "errors" : errs})
+    #print(values)
+    #print(len(keys),len(values),len(folders),len(basename),len(ext),len(errs))
+    return pd.DataFrame({"folders" : folders,"basename" : basename,"extension" : ext,"keys" : keys,"values" : values, "errors" : errs})
 
-df.head()
 
-df.to_excel(product["metadata_file"],index=False)
+Path(product["data"]).mkdir(parents=True, exist_ok=True)
+
+for data_folder in data_folders.split(","):
+    df=pd.read_excel(os.path.join(upstream["metadata_read"]["data"],"Template_{}.xlsx".format(data_folder)))
+    df_out = prefill_templates(df)
+    df_out.to_excel(os.path.join(product["metadata_file"],"Template_{}.xlsx".format(data_folder)),index=False)

@@ -22,7 +22,7 @@ tasks:
 
   - source: templates_calibration.py
     product: 
-      nb: "{{config_output}}/templates_calibration.html"
+      nb: "{{config_output}}/templates_calibration.ipynb"
       data: "{{config_output}}/templates_calibration"
     params:
       config_root: "{{config_root}}"    
@@ -30,7 +30,7 @@ tasks:
       si_tag: "{{si_tag}}"
       pst_tag: "{{pst_tag}}"
       test_tags: "{{test_tags}}" 
-      fit_peaks: "{{fit_peaks}}"
+      fit_ne_peaks: "{{fit_ne_peaks}}"
 
   - source: templates_assessment.py
     name: templates_assessment-[[pst_tag]]  

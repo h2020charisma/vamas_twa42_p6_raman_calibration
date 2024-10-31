@@ -5,4 +5,4 @@ config_root: "CHANGEIT\\Nextcloud\\Projects\\CHARISMA\\Data Raman RR1"
 config_output :  "CHANGEIT\\Nextcloud\\Projects\\CHARISMA\\Data Raman RR1\\output"
 
 # set false for quick run and testing the workflow
-fit_peaks : False
+fit_ne_peaks : False

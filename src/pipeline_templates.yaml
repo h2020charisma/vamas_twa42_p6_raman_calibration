@@ -3,14 +3,15 @@ tasks:
   - source: metadata_read.py
     product: 
       nb: "products/metadata_read.ipynb"
-      data: "{{config_root_output}}/templates"
+      data: "{{config_root_output}}/metadata"
     params:
       config_root: "{{config_root}}"
       data_folders: "{{data_folders}}"
 
-  - source: tasks/metadata_match.py
+  - source: metadata_match.py
     product: 
       nb: "products/metadata_match.ipynb"
+      data: "{{config_root_output}}/templates"
     params:
       config_root: "{{config_root}}"
       data_folders: "{{data_folders}}"      

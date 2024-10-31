@@ -17,7 +17,13 @@ import shutil
 import matplotlib.pyplot as plt
 
 metadata = pd.read_hdf(upstream["templates_read"]["h5"], key="templates_read")
+
+metadata.head()
+
+
 unique_optical_paths = metadata['optical_path'].unique()
+print(unique_optical_paths)
+print(metadata['sample'].unique())
 
 color_map = {}
 for index, string in enumerate(set([neon_tag,si_tag,pst_tag])):
@@ -26,7 +32,11 @@ for index, string in enumerate(set([neon_tag,si_tag,pst_tag])):
 def load_spectrum(df,tag=None):
     row = 0 #tbd select based on SNR
     _file = os.path.join(config_root,df["filename"].iloc[row])
-    return rc2.spectrum.from_local_file(_file),os.path.basename(_file)
+    print("********",_file)
+    if os.path.isfile(_file):
+        return rc2.spectrum.from_local_file(_file),os.path.basename(_file)
+    else:
+        raise FileNotFoundError(_file)
 
 def process_spectrum_baseline(spe,kwargs = {"niter" : 40 }):
     try:
@@ -46,9 +56,11 @@ def read_tag(op_meta,tag, _path, boundaries=None, baseline=False, normalize = Fa
     pst_meta = op_meta.loc[op_meta["sample"]==tag]
     if pst_meta.shape[0] > 0:
         spe,_ = load_spectrum(pst_meta,tag)
+
         file_path = os.path.join(_path,"{}.cha".format(tag))
         if os.path.exists(file_path):
-            os.remove(file_path)        
+            os.remove(file_path)   
+        print(file_path)     
         spe.write_cha(file_path,dataset = "/raw")
         if boundaries is None:
             spe = spe.trim_axes(method='x-axis',boundaries=(trim_left,max(spe.x)))
@@ -65,7 +77,9 @@ def read_tag(op_meta,tag, _path, boundaries=None, baseline=False, normalize = Fa
 
 trim_left = 100
 for op in unique_optical_paths:
+    print(op)
     op_meta = metadata.loc[metadata["optical_path"] == op]
+    
     if not op_meta['enabled'].unique()[0]:
         continue
     provider = op_meta['provider'].unique()[0]
@@ -94,6 +108,8 @@ for op in unique_optical_paths:
     if min(spe_neon.x)<0:
         spe_neon = spe_neon.trim_axes(method='x-axis',boundaries=(trim_left,max(spe_neon.x)))  
         print(max(spe_neon.x))  
+
+    print("*****meta", spe_neon.meta)        
     spe_neon.write_cha(file_path,dataset = "/raw")
 
     try:

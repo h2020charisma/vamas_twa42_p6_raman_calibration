@@ -6,7 +6,7 @@ neon_tag = None
 si_tag = None
 pst_tag = None
 test_tags = None
-fit_peaks = None
+fit_ne_peaks = None
 # -
 
 import os.path
@@ -20,57 +20,68 @@ import matplotlib.pyplot as plt
 import ramanchada2.misc.utils as rc2utils
 import numpy as np
 from pathlib import Path
+import traceback
+from IPython.display import display
 
 noise_factor = 1.5
 
+def find_peaks(spe_test,profile="Gaussian"):
+    find_kw={"wlen": 200, "width": 1, "sharpening" : None}
+    find_kw["prominence"] = spe_test.y_noise_MAD() * 3
+    cand = spe_test.find_peak_multipeak(**find_kw)
+    fit_kw = {}
+    return spe_test.fit_peak_multimodel(profile=profile,candidates=cand, **fit_kw ,no_fit=False) 
 
 def calibrate_x(op,laser_wl,spe_neon,spe_sil,find_kw={"wlen": 200, "width": 1},fit_peaks_kw = {}):
-    
-    calmodel = CalibrationModel.calibration_model_factory(
-        laser_wl,
-        spe_neon,
-        spe_sil,
-        neon_wl=rc2const.NEON_WL[laser_wl],
-        find_kw=find_kw,
-        fit_peaks_kw=fit_peaks_kw,
-        should_fit=fit_peaks,
-        prominence_coeff = 3
-    )    
+    calmodel = None
+
+    spe_neon.plot()
+    try:
+        calmodel = CalibrationModel.calibration_model_factory(
+            laser_wl,
+            spe_neon,
+            spe_sil,
+            neon_wl= rc2const.NEON_WL[laser_wl],
+            find_kw={"wlen": 200, "width": 1},
+            fit_peaks_kw={},
+            should_fit=fit_ne_peaks,
+            match_method="cluster"  # "assignment"
+        )
+    except Exception as err:
+        traceback.print_exc()
+   
+   
+    except Exception as err:
+        traceback.print_exc()
+
     assert len(calmodel.components) == 2
-    # model_ne = calmodel.components[0]
+    model_neon = calmodel.components[0]
     model_si = calmodel.components[1]  
+
+    fig, ax = plt.subplots(1,1)
+    model_neon.model.plot(ax=ax)
 
     Path(os.path.join(product["data"],op)).mkdir(parents=True, exist_ok=True)
     model_si.peaks.to_csv(os.path.join(product["data"],op,"peaks.csv"),index=False)
     
-    spe_sil_calib = apply_calibration_x(calmodel,spe_sil,spe_units="cm-1")
+    spe_sil_calib = calmodel.apply_calibration_x(spe_sil,spe_units="cm-1")
 
-    find_kw = dict(sharpening=None)
+    find_kw={"wlen": 200, "width": 1}
     diff = []
     sname = []
     for spe in [spe_sil,spe_sil_calib]:
-        spe_pos_dict = spe.fit_peak_positions(center_err_threshold=10, 
-                                    find_peaks_kw=find_kw,  fit_peaks_kw=fit_peaks_kw)  # type: ignore 
-        x_spe,x_reference,x_distance,df = rc2utils.match_peaks(spe_pos_dict, model_si.ref)
-        if x_spe != None and len(x_spe)>0:
-            sum_of_differences = np.sum(np.abs(x_spe - x_reference)) / len(x_spe)
-        else:
-            sum_of_differences = None
-        #print("{}\tsum_of_differences {} {}".format(op,sum_of_differences, model_si.ref_units))
-        diff.append(sum_of_differences)
+        fitres = find_peaks(spe,profile="Pearson4")
+        df = fitres.to_dataframe_peaks().sort_values(by="height",ascending=False)
+        display(df.head(1))
+        si_peak_found = df.iloc[0]["center"]
+        print("{}\tdifferences {} {}".format(op,si_peak_found-520.45, model_si.ref_units))
+        diff.append(si_peak_found-520.45)
 
     pd.DataFrame({"spectra" : ["Sil-original","Sil-calibrated"], "peak differences" : diff}).to_csv(os.path.join(product["data"],op,"differences.csv"),index=False)
 
     return calmodel
 
-def apply_calibration_x(calmodel: CalibrationModel, old_spe: rc2.spectrum.Spectrum, spe_units="cm-1"):
-    new_spe = old_spe
-    model_units = spe_units
-    for model in calmodel.components:
-        if model.enabled:
-            new_spe = model.process(new_spe, model_units, convert_back=False)
-            model_units = model.model_units
-    return new_spe
+
 
 
 Path(product["data"]).mkdir(parents=True, exist_ok=True)
@@ -113,7 +124,7 @@ for op in unique_optical_paths:
             try:
                 spe = from_chada(os.path.join(_path_source,"{}.cha".format(tag)),dataset="/raw")
                 spe.plot(label=f"{tag} original",ax=axes[index+1])
-                spe_calib = apply_calibration_x(calmodel,spe,spe_units="cm-1")
+                spe_calib = calmodel.apply_calibration_x(spe,spe_units="cm-1")
             
                 spe_calib.plot(ax=axes[index+1],label=f"{tag} calibrated")
                     

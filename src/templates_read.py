@@ -19,18 +19,19 @@ FRONT_SHEET_COLUMNS = "optical_path,instrument_make,instrument_model,wavelength,
 
 
 def load_config(path):
-    with open(path , 'r') as file:
+    with open(path, 'r') as file:
         _tmp = json.load(file)
     return _tmp
 
-    
-_config = load_config(os.path.join(config_root,config_templates))
+
+_config = load_config(os.path.join(config_root, config_templates))
+
 
 def get_enabled(key):
     if key in _config['options']:
         return _config['options'][key].get('enable', True)
     else:
-        return True 
+        return True
 
 
 Path(os.path.dirname(product["h5"])).mkdir(parents=True, exist_ok=True)
@@ -38,13 +39,11 @@ Path(os.path.dirname(product["h5"])).mkdir(parents=True, exist_ok=True)
 df_merged_list = []
 
 for key in _config["templates"]:
-    
-    _path_excel = os.path.join(config_root,key["template"])
-
+    _path_excel = os.path.join(config_root, key["template"])
     df = pd.read_excel(_path_excel, sheet_name=FILES_SHEET_NAME)
-    print(key,len(df.columns),df.columns)
+    print(key, len(df.columns), df.columns)
     _FILES_SHEET_COLUMNS = FILES_SHEET_COLUMNS.split(",")
-    print(key,len(_FILES_SHEET_COLUMNS),_FILES_SHEET_COLUMNS)
+    print(key, len(_FILES_SHEET_COLUMNS), _FILES_SHEET_COLUMNS)
 
     if len(_FILES_SHEET_COLUMNS) == len(df.columns):
         df.columns = _FILES_SHEET_COLUMNS  # Rename all columns
@@ -52,19 +51,17 @@ for key in _config["templates"]:
         df.columns = _FILES_SHEET_COLUMNS + df.columns[len(_FILES_SHEET_COLUMNS):].tolist()  
         # Rename only the first few columns
 
-    df['filename'] = df['filename'].apply(lambda f: os.path.join(config_root,key["path"],f))
+    df['filename'] = df['filename'].apply(lambda f: os.path.join(config_root, key["path"],f))
 
     df_meta = pd.read_excel(_path_excel, sheet_name=FRONT_SHEET_NAME, skiprows=4)
-    print("meta",df_meta.columns)
+    print("meta", df_meta.columns)
     df_meta.columns = FRONT_SHEET_COLUMNS.split(",")
     df_merged = pd.merge(df, df_meta, on='optical_path', how='left')
-
-
 
     # Open the Excel file and read specific cells directly
     with pd.ExcelFile(_path_excel) as xls:
         provider = xls.parse(FRONT_SHEET_NAME, usecols="B", nrows=1, header=None).iloc[0, 0]
-        investigation = xls.parse(FRONT_SHEET_NAME, usecols="F", nrows=1, header=None).iloc[0, 0]
+        investigation = xls.parse(FRONT_SHEET_NAME, usecols="H", nrows=1, header=None).iloc[0, 0]
     df_merged["provider"] = provider
     df_merged["investigation"] = investigation
     df_merged["source"] = key

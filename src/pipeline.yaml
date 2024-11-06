@@ -2,7 +2,7 @@ tasks:
 
   - source: templates_read.py
     product: 
-      nb: "{{config_output}}/templates_read.html"
+      nb: "{{config_output}}/templates_read.ipynb"
       h5: "{{config_output}}\\templates_read.h5"
       xlsx: "{{config_output}}\\templates_read.xlsx"
     params:
@@ -11,7 +11,7 @@ tasks:
 
   - source: templates_load.py
     product: 
-      nb: "{{config_output}}/templates_load.html"
+      nb: "{{config_output}}/templates_load.ipynb"
       data: "{{config_output}}/templates_load"
     params:
       config_root: "{{config_root}}"    
@@ -19,6 +19,8 @@ tasks:
       si_tag: "{{si_tag}}"
       pst_tag: "{{pst_tag}}"
       test_tags: "{{test_tags}}"
+      ti_tags: "{{ti_tags}}"
+      apap_tags: "{{apap_tags}}"
 
   - source: templates_calibration.py
     product: 

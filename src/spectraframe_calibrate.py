@@ -1,5 +1,5 @@
 # + tags=["parameters"]
-upstream = ["spectraframe_01"]
+upstream = ["spectraframe_01", "spectraframe_04"]
 product = None
 config_templates: "{{config_templates}}"
 config_root: "{{config_root}}"

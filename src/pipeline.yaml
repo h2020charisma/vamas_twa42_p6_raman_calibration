@@ -10,7 +10,7 @@ tasks:
       config_templates: "{{config_templates}}"
       config_root: "{{config_root}}"
     grid:
-      key: ["01"]      
+      key: ["01","04"]      
 
   - source: spectraframe_calibrate.py
     name: "spectracal_[[key]]"    

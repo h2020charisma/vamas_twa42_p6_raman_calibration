@@ -17,7 +17,6 @@ def get_enabled(key, _config):
     else:
         return True
 
-
 def load_spectrum_df(row):
     print(row["file_name"])
     return Spectrum.from_local_file(row["file_name"])
@@ -58,15 +57,18 @@ def is_in_skip(_config, key, filename):
     skip_list = _config.get("templates", {}).get(key, {}).get("background", {}).get("skip", [])
     return filename in skip_list
 
+
 def get_config_units(_config, key, tag="neon"):
     # Access the "skip" list safely using .get() with a default empty list
     return _config.get("templates", {}).get(key, {}).get("units", {}).get(tag, "cm-1")
 
-# Function to check if an item is in "skip" safely
-def is_in_skip(_config, key, filename):
-    # Access the "skip" list safely using .get() with a default empty list
-    skip_list = _config.get("templates", {}).get(key, {}).get("background", {}).get("skip", [])
-    return filename in skip_list
+
+def get_config_excludecols(_config, key):
+    return _config.get("templates", {}).get(key, {}).get("exclude_cols", [
+        "date", "time", "measurement", "source", "file_name", "notes", 
+        "laser_power_percent",  "laser_power_mW", "background"
+        ])
+
 
 def find_peaks(spe_test, profile="Gaussian", find_kw=None, vary_baseline=False):
     if find_kw is None:

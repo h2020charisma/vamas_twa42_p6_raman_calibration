@@ -17,7 +17,7 @@ _config = load_config(os.path.join(config_root, config_templates))
 Path(os.path.dirname(product["h5"])).mkdir(parents=True, exist_ok=True)
 df_merged_list = []
 
-for entry in _config["templates"]:
+for key, entry in _config["templates"].items():
     _path_excel = os.path.join(config_root, entry["template"])
     df_merged = read_template(_path_excel, path_spectra=os.path.join(config_root, entry["path"]))
     df_merged["source"] = str(entry)

@@ -4,6 +4,9 @@ product = None
 config_templates = None
 config_root = None
 key = None
+neon_tag = None
+si_tag = None
+pst_tag = None
 # -
 
 from ramanchada2.protocols.spectraframe import SpectraFrame
@@ -13,8 +16,6 @@ import os.path
 from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
-import numpy as np
-from ramanchada2.spectrum.filters.drop_spikes import spike_indices
 
 _config = load_config(os.path.join(config_root, config_templates))
 Path(os.path.dirname(product["h5"])).mkdir(parents=True, exist_ok=True)
@@ -35,7 +36,7 @@ df["background_file"] = None
 
 grouped_df = df.groupby(groupby_cols,dropna=False)
 
-# figure out brackground files
+# figure out background files
 for group_keys, sample_data in grouped_df:
     print(sample_data.shape, group_keys)
     fig, ax = plt.subplots(1, 1, figsize=(15,3))
@@ -95,3 +96,4 @@ if new_rows:  # Only concatenate if there are new rows to add
 
 df.to_hdf(product["h5"], key='templates_read', mode='w')
 df.to_excel(product["xlsx"], sheet_name='templates_read', index=False)    
+

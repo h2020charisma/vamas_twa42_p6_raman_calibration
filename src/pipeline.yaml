@@ -31,8 +31,25 @@ tasks:
     params:
       config_templates: "{{config_templates}}"
       config_root: "{{config_root}}"
+      neon_tag: "{{ne_tag}}"
+      si_tag: "{{si_tag}}"      
     grid:
       key: ["01"]      
+
+  - source: spectraframe_calibrate.py
+    name: "spectracal_[[key]]"    
+    product: 
+      nb: "{{config_output}}/[[key]]/spectracal.ipynb"
+      calmodels: "{{config_output}}/[[key]]/calmodels"
+    params:
+      config_templates: "{{config_templates}}"
+      config_root: "{{config_root}}"
+      neon_tag: "{{ne_tag}}"
+      si_tag: "{{si_tag}}"
+      pst_tag: "{{pst_tag}}"
+      fit_neon_peaks: False   
+    grid:
+      key: ["01"]         
 
   - source: templates_calibration.py
     product: 

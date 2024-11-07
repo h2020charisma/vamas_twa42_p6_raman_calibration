@@ -31,7 +31,10 @@ print(exclude_cols)
 # ["date", "time", "measurement", "source", "file_name", "notes", "laser_power_percent",  "laser_power_mW", "background"]
 # ['date', 'time', 'measurement', 'source', 'file_name', 'notes', 'laser_power_percent', 'integration_time_ms', 'humidity' ,'laser_power_mW', 'background']
 # Get columns to group by
-groupby_cols = [col for col in df.columns if col not in exclude_cols]
+
+start_col = 'optical_path'  # specify the column you want to start grouping with
+groupby_cols = [start_col] + [col for col in df.columns if col not in exclude_cols and col != start_col]
+
 print(groupby_cols)
 
 df["background_file"] = None

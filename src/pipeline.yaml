@@ -22,6 +22,18 @@ tasks:
       ti_tags: "{{ti_tags}}"
       apap_tags: "{{apap_tags}}"
 
+  - source: spectraframe_load.py
+    name: "spectraframe_[[key]]"    
+    product: 
+      nb: "{{config_output}}/[[key]]/spectraframe_load.ipynb"
+      h5: "{{config_output}}/[[key]]/spectraframe_load.h5"
+      xlsx: "{{config_output}}/[[key]]/spectraframe_load.xlsx"
+    params:
+      config_templates: "{{config_templates}}"
+      config_root: "{{config_root}}"
+    grid:
+      key: ["01"]      
+
   - source: templates_calibration.py
     product: 
       nb: "{{config_output}}/templates_calibration.ipynb"

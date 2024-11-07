@@ -1,7 +1,7 @@
 import pandas as pd
 import os.path
 import json
-
+from ramanchada2.spectrum import Spectrum
 
 def load_config(path):
     with open(path, 'r') as file:
@@ -16,11 +16,15 @@ def get_enabled(key, _config):
         return True
 
 
+def load_spectrum_df(row):
+    print(row["file_name"])
+    return Spectrum.from_local_file(row["file_name"])
+
 def read_template(_path_excel, path_spectra=""):
     FRONT_SHEET_NAME = "Front sheet"
     FILES_SHEET_NAME = "Files sheet"
 
-    FILES_SHEET_COLUMNS = "sample,measurement,filename,background,overexposed,optical_path,laser_power_percent,laser_power_mW,integration_time_ms,humidity,temperature,date,time"
+    FILES_SHEET_COLUMNS = "sample,measurement,file_name,background,overexposed,optical_path,laser_power_percent,laser_power_mW,integration_time_ms,humidity,temperature,date,time"
     FRONT_SHEET_COLUMNS = "optical_path,instrument_make,instrument_model,wavelength,max_laser_power_mW,spectral_range,collection_optics,slit_size,grating,pin_hole_size,collection_fibre_diameter,notes"
     df = pd.read_excel(_path_excel, sheet_name=FILES_SHEET_NAME)
     _FILES_SHEET_COLUMNS = FILES_SHEET_COLUMNS.split(",")
@@ -30,7 +34,7 @@ def read_template(_path_excel, path_spectra=""):
         df.columns = _FILES_SHEET_COLUMNS + df.columns[len(_FILES_SHEET_COLUMNS):].tolist()
         # Rename only the first few columns
 
-    df['filename'] = df['filename'].apply(lambda f: os.path.join(path_spectra,f))
+    df['file_name'] = df['file_name'].apply(lambda f: os.path.join(path_spectra,f))
 
     df_meta = pd.read_excel(_path_excel, sheet_name=FRONT_SHEET_NAME, skiprows=4)
     print("meta", df_meta.columns)

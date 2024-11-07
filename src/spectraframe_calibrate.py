@@ -26,7 +26,8 @@ _config = load_config(os.path.join(config_root, config_templates))
 _ne_units = get_config_units(_config, key, tag="neon")
 
 # now try calibration 
-df_bkg_substracted = df.loc[df["background"] == "Background_Subtracted"]
+df_bkg_substracted = df.loc[df["background"] == "BACKGROUND_SUBTRACTED"]
+print(df_bkg_substracted.shape)
 grouped_df = df_bkg_substracted.groupby(["laser_wl", "optical_path"], dropna=False)
 for group_keys, op_data in grouped_df:
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 5)) 

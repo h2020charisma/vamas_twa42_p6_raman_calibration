@@ -10,65 +10,21 @@ import json
 import os.path
 import pandas as pd
 from pathlib import Path
-
-FRONT_SHEET_NAME = "Front sheet"
-FILES_SHEET_NAME = "Files sheet"
-
-FILES_SHEET_COLUMNS = "sample,measurement,filename,background,overexposed,optical_path,laser_power_percent,laser_power_mw,integration_time_ms,humidity,temperature,date,time"
-FRONT_SHEET_COLUMNS = "optical_path,instrument_make,instrument_model,wavelength,max_laser_power_mW,spectral_range,collection_optics,slit_size,grating,pin_hole_size,collection_fibre_diameter,notes"
-
-
-def load_config(path):
-    with open(path, 'r') as file:
-        _tmp = json.load(file)
-    return _tmp
+from utils import read_template, load_config, get_enabled
 
 
 _config = load_config(os.path.join(config_root, config_templates))
-
-
-def get_enabled(key):
-    if key in _config['options']:
-        return _config['options'][key].get('enable', True)
-    else:
-        return True
-
-
 Path(os.path.dirname(product["h5"])).mkdir(parents=True, exist_ok=True)
-
 df_merged_list = []
 
-for key in _config["templates"]:
-    _path_excel = os.path.join(config_root, key["template"])
-    df = pd.read_excel(_path_excel, sheet_name=FILES_SHEET_NAME)
-    print(key, len(df.columns), df.columns)
-    _FILES_SHEET_COLUMNS = FILES_SHEET_COLUMNS.split(",")
-    print(key, len(_FILES_SHEET_COLUMNS), _FILES_SHEET_COLUMNS)
-
-    if len(_FILES_SHEET_COLUMNS) == len(df.columns):
-        df.columns = _FILES_SHEET_COLUMNS  # Rename all columns
-    else:
-        df.columns = _FILES_SHEET_COLUMNS + df.columns[len(_FILES_SHEET_COLUMNS):].tolist()  
-        # Rename only the first few columns
-
-    df['filename'] = df['filename'].apply(lambda f: os.path.join(config_root, key["path"],f))
-
-    df_meta = pd.read_excel(_path_excel, sheet_name=FRONT_SHEET_NAME, skiprows=4)
-    print("meta", df_meta.columns)
-    df_meta.columns = FRONT_SHEET_COLUMNS.split(",")
-    df_merged = pd.merge(df, df_meta, on='optical_path', how='left')
-
-    # Open the Excel file and read specific cells directly
-    with pd.ExcelFile(_path_excel) as xls:
-        provider = xls.parse(FRONT_SHEET_NAME, usecols="B", nrows=1, header=None).iloc[0, 0]
-        investigation = xls.parse(FRONT_SHEET_NAME, usecols="H", nrows=1, header=None).iloc[0, 0]
-    df_merged["provider"] = provider
-    df_merged["investigation"] = investigation
-    df_merged["source"] = key
+for entry in _config["templates"]:
+    _path_excel = os.path.join(config_root, entry["template"])
+    df_merged = read_template(_path_excel, path_spectra=os.path.join(config_root, entry["path"]))
+    df_merged["source"] = str(entry)
     df_merged_list.append(df_merged)
 
 final_df = pd.concat(df_merged_list, axis=0)
-final_df['enabled'] = final_df['optical_path'].apply(get_enabled)
+final_df['enabled'] = final_df['optical_path'].apply(lambda x: get_enabled(x, _config))
 
 final_df.to_hdf(product["h5"], key='templates_read', mode='w')
 final_df.to_excel(product["xlsx"], sheet_name='templates_read',index=False)

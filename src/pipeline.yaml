@@ -10,7 +10,7 @@ tasks:
       config_templates: "{{config_templates}}"
       config_root: "{{config_root}}"
     grid:
-      key: ["01","04"]      
+      key: ["01","04","07"]      
 
   - source: spectraframe_calibrate.py
     name: "spectracal_[[key]]"    
@@ -25,4 +25,4 @@ tasks:
       pst_tag: "{{pst_tag}}"
       fit_neon_peaks: False   
     grid:
-      key: ["01"]         
+      key: ["01","07"]         

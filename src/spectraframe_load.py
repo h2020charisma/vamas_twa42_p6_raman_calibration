@@ -4,9 +4,6 @@ product = None
 config_templates = None
 config_root = None
 key = None
-neon_tag = None
-si_tag = None
-pst_tag = None
 # -
 
 from ramanchada2.protocols.spectraframe import SpectraFrame
@@ -34,7 +31,7 @@ print(groupby_cols)
 
 df["background_file"] = None
 
-grouped_df = df.groupby(groupby_cols,dropna=False)
+grouped_df = df.groupby(groupby_cols, dropna=False)
 
 # figure out background files
 for group_keys, sample_data in grouped_df:

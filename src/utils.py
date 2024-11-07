@@ -58,6 +58,10 @@ def is_in_skip(_config, key, filename):
     skip_list = _config.get("templates", {}).get(key, {}).get("background", {}).get("skip", [])
     return filename in skip_list
 
+def get_config_units(_config, key, tag="neon"):
+    # Access the "skip" list safely using .get() with a default empty list
+    return _config.get("templates", {}).get(key, {}).get("units", {}).get(tag, "cm-1")
+
 # Function to check if an item is in "skip" safely
 def is_in_skip(_config, key, filename):
     # Access the "skip" list safely using .get() with a default empty list

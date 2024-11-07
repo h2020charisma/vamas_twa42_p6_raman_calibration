@@ -1,6 +1,8 @@
 # + tags=["parameters"]
 upstream = ["spectraframe_01"]
 product = None
+config_templates: "{{config_templates}}"
+config_root: "{{config_root}}"
 key = None
 neon_tag = None
 si_tag = None
@@ -14,12 +16,14 @@ from ramanchada2.protocols.calibration.calibration_model import CalibrationModel
 import ramanchada2.misc.constants as rc2const
 import matplotlib.pyplot as plt
 import traceback
-from utils import find_peaks, plot_si_peak
+from utils import find_peaks, plot_si_peak, get_config_units, load_config
 import os.path
 
 Path(product["calmodels"]).mkdir(parents=True, exist_ok=True)
 df = pd.read_hdf(upstream[f"spectraframe_{key}"]["h5"], key="templates_read")
 
+_config = load_config(os.path.join(config_root, config_templates))
+_ne_units = get_config_units(_config, key, tag="neon")
 
 # now try calibration 
 df_bkg_substracted = df.loc[df["background"] == "Background_Subtracted"]
@@ -34,7 +38,7 @@ for group_keys, op_data in grouped_df:
 
     spe_sil = spe_sil.trim_axes(method='x-axis', boundaries=(520.45-50, 520.45+50))
     spe_neon.plot(ax=ax1, label=neon_tag)
-    spe_sil.plot(ax=ax1, label=si_tag)
+    spe_sil.plot(ax=ax2, label=si_tag)
 
     # False should be used for testing only . Fitting may take a while .
 
@@ -55,7 +59,7 @@ for group_keys, op_data in grouped_df:
         model_neon1 = calmodel1.derive_model_curve(
             spe=spe_neon,
             ref=neon_wl,
-            spe_units="nm",
+            spe_units=_ne_units,
             ref_units="nm",
             find_kw=find_kw,
             fit_peaks_kw=fit_peaks_kw,
@@ -68,7 +72,7 @@ for group_keys, op_data in grouped_df:
         # now derive_model_curve finds peaks, fits peaks, matches peaks and derives the calibration curve
         # and model_neon.process() could be applied to Si or other spectra
         print(model_neon1)
-        calmodel1.plot(ax=ax2)
+        #calmodel1.plot(ax=ax2)
         model_neon1.model.plot(ax=ax3)        
     except Exception as err:
         traceback.print_exc()

@@ -5,7 +5,10 @@
 			"path": "myfolder/csv/",
 			"background" : {
                 "skip" : ["CAL_2_OP1.csv","APAP_2_OP1.csv","PST_2_OP1.csv"]
-            }
+            },
+            "units" : {
+                "neon" : "nm"
+            }			
             
 		}
 	},

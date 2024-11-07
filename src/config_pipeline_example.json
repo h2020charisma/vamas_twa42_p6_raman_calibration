@@ -1,11 +1,18 @@
 {
-    "templates" : {
-       "01" : {"template" : "myfolder/Template Raman Reporting_CHARISMA.xlsx" ,"path" : "myfolder/csv/"}
+	"templates": {
+		"01": {
+			"template": "myfolder/Template Raman Reporting_CHARISMA.xlsx",
+			"path": "myfolder/csv/",
+			"background" : {
+                "skip" : ["CAL_2_OP1.csv","APAP_2_OP1.csv","PST_2_OP1.csv"]
+            }
+            
+		}
 	},
-	"options" : {
-		"OP_1" : {
-			"notes" : "Negative Neon lines",
-			"enable" : false
+	"options": {
+		"OP_1": {
+			"notes": "Negative Neon lines",
+			"enable": false
 		}
 	}
 }

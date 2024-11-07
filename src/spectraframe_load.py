@@ -8,11 +8,13 @@ key = None
 
 from ramanchada2.protocols.spectraframe import SpectraFrame
 from ramanchada2.spectrum import Spectrum
-from utils import read_template, load_config, load_spectrum_df
+from utils import read_template, load_config, is_in_skip
 import os.path
 from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
+import numpy as np
+from ramanchada2.spectrum.filters.drop_spikes import spike_indices
 
 _config = load_config(os.path.join(config_root, config_templates))
 Path(os.path.dirname(product["h5"])).mkdir(parents=True, exist_ok=True)
@@ -36,7 +38,7 @@ grouped_df = df.groupby(groupby_cols,dropna=False)
 # figure out brackground files
 for group_keys, sample_data in grouped_df:
     print(sample_data.shape, group_keys)
-    fig, ax = plt.subplots(1, 1, figsize=(15,5))
+    fig, ax = plt.subplots(1, 1, figsize=(15,3))
     sample_data["spectrum"] = sample_data.apply(lambda row: Spectrum.from_local_file(row["file_name"]) if os.path.isfile(row["file_name"]) else None, axis=1)
     try:
         sample_data.apply(lambda row: None if row["spectrum"] is None else row["spectrum"].plot(ax=ax,label="{} {}".format(row["sample"], row["background"])),axis=1)
@@ -71,12 +73,19 @@ for index, row in df_bkg_notsubtracted.iterrows():
     new_row = row.copy()
     spe_bkg = Spectrum.from_local_file(row["background_file"])
     spe_bkg.plot(label="Background_only", ax=tax, linestyle='-', color='red')
-    spe_nospikes = spe_bkg.recover_spikes()
-    spe_nospikes.plot(label="Background_only_nospikes", ax=tax, linestyle='--', color='gray')
+    spe_bkg_nospikes = spe_bkg.recover_spikes()
+    spe_bkg.plot(label="Background_only_nospikes", ax=tax, linestyle='--', color='gray')
     spe = Spectrum.from_local_file(row["file_name"])
     spe.plot(label="Background_Not_Subtracted {}".format(row["sample"]), ax=ax)    
-    new_row["spectrum"] = spe - spe_nospikes
-    new_row["spectrum"].plot(label="Background_Subtracted {}".format(row["sample"]), ax = ax,linestyle='--')
+
+    new_spe = spe if is_in_skip(_config, key, filename=os.path.basename(row["background_file"])) else spe - spe_bkg_nospikes
+    # new_spe.y[new_spe.y < 0] = 0
+    # remove pedestal
+    #new_spe.y = new_spe.y - np.min(new_spe.y)
+    #new_spe = new_spe.recover_spikes()
+
+    new_row["spectrum"] = new_spe
+    new_spe.plot(label="Background_Subtracted {}".format(row["sample"]), ax = ax,linestyle='--')
     new_row["background"] = "Background_Subtracted"
     new_rows.append(new_row)
 

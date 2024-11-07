@@ -48,3 +48,10 @@ def read_template(_path_excel, path_spectra=""):
     df_merged["provider"] = provider
     df_merged["investigation"] = investigation
     return df_merged
+
+
+# Function to check if an item is in "skip" safely
+def is_in_skip(_config, key, filename):
+    # Access the "skip" list safely using .get() with a default empty list
+    skip_list = _config.get("templates", {}).get(key, {}).get("background", {}).get("skip", [])
+    return filename in skip_list

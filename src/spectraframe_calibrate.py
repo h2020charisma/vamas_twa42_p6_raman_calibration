@@ -1,5 +1,5 @@
 # + tags=["parameters"]
-upstream = ["spectraframe_01", "spectraframe_04", "spectraframe_07"]
+upstream = ["spectraframe_01", "spectraframe_04", "spectraframe_07", "spectraframe_0121", "spectraframe_0122"]
 product = None
 config_templates: "{{config_templates}}"
 config_root: "{{config_root}}"
@@ -30,15 +30,17 @@ df_bkg_substracted = df.loc[df["background"] == "BACKGROUND_SUBTRACTED"]
 print(df_bkg_substracted.shape)
 grouped_df = df_bkg_substracted.groupby(["laser_wl", "optical_path"], dropna=False)
 for group_keys, op_data in grouped_df:
-    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 5)) 
+    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 3)) 
     laser_wl = group_keys[0]
     optical_path = group_keys[1]
 
+    ax1.set_title(f"{key} {laser_wl}nm {optical_path}")
     spe_neon = op_data.loc[op_data["sample"] == neon_tag]["spectrum"].iloc[0]
     spe_sil = op_data.loc[op_data["sample"] == si_tag]["spectrum"].iloc[0]
 
     spe_sil = spe_sil.trim_axes(method='x-axis', boundaries=(520.45-50, 520.45+50))
     spe_neon.plot(ax=ax1, label=neon_tag)
+    ax1.set_xlabel(_ne_units)
     spe_sil.plot(ax=ax2, label=si_tag)
 
     # False should be used for testing only . Fitting may take a while .
@@ -53,6 +55,7 @@ for group_keys, op_data in grouped_df:
         # options for fitting peaks
 
         calmodel1 = CalibrationModel(laser_wl)
+        calmodel1.nonmonotonic = "drop"
         # create CalibrationModel class. it does not derive a curve at this moment!
         calmodel1.prominence_coeff = 3
         find_kw["prominence"] = spe_neon.y_noise_MAD() * calmodel1.prominence_coeff
@@ -78,21 +81,35 @@ for group_keys, op_data in grouped_df:
     except Exception as err:
         traceback.print_exc()
 
+    ax1.grid()
+    ax2.grid()
+
     # The second step of the X calibration - Laser zeroing
     # 
     try:           
-        find_kw = {"wlen": 200, "width": 1}
+        fig, (ax, ax1) = plt.subplots(1, 2, figsize=(15, 3))
+        # find_kw = {"wlen": 200, "width": 1}
+        find_kw = {"wlen": 50, "width": 1}
         # options for finding peaks    
         fit_peaks_kw = {}
         # options for fitting peaks         
         spe_sil_ne_calib = model_neon1.process(
             spe_sil, spe_units="cm-1", convert_back=False
         )
+        spe_sil_ne_calib.plot(ax=ax, label="Si [Ne calibrated only]", fmt='+-')
+        ax.set_xlabel("nm")
+        ax.grid()
+        print("Number of points {} calibrated {}".format(len(spe_sil.x), len(spe_sil_ne_calib.x)))
+        # print(spe_sil_ne_calib.x, spe_sil_ne_calib.y)
+        ax1.scatter(spe_sil.x, spe_sil_ne_calib.x)
+        ax1.set_ylabel("nm")
+        ax1.set_xlabel("cm-1")
+        ax1.grid()
         calmodel1.prominence_coeff = 3
         find_kw["prominence"] = (
             spe_sil_ne_calib.y_noise_MAD() * calmodel1.prominence_coeff
         )
-        calmodel1.derive_model_zero(
+        model_si = calmodel1.derive_model_zero(
             spe=spe_sil_ne_calib,
             ref={520.45: 1},
             spe_units=model_neon1.model_units,
@@ -103,8 +120,12 @@ for group_keys, op_data in grouped_df:
             name="Si calibration",
             profile="Pearson4"
         )
+        print(model_si)
+        print("peaks", model_si.peaks)
     except Exception as err:
         traceback.print_exc()
+        assert False, err
+
 
     # let's check the Si peak with Pearson4 profile
     si_peak = 520.45

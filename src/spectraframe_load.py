@@ -15,9 +15,13 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 _config = load_config(os.path.join(config_root, config_templates))
+print(key,_config["templates"].keys())
+
 Path(os.path.dirname(product["h5"])).mkdir(parents=True, exist_ok=True)
 
 entry = _config["templates"][key]
+entry
+
 _path_excel = os.path.join(config_root, entry["template"])
 df = read_template(_path_excel, path_spectra=os.path.join(config_root, entry["path"]))
 df['background'] = df['background'].str.upper() 
@@ -45,7 +49,8 @@ grouped_df = df.groupby(groupby_cols, dropna=False)
 for group_keys, sample_data in grouped_df:
     print(sample_data.shape, group_keys)
     fig, ax = plt.subplots(1, 1, figsize=(15,3))
-    sample_data["spectrum"] = sample_data.apply(lambda row: Spectrum.from_local_file(row["file_name"]) if os.path.isfile(row["file_name"]) else None, axis=1)
+    _spe = sample_data.apply(lambda row: Spectrum.from_local_file(row["file_name"]) if os.path.isfile(row["file_name"]) else None, axis=1)
+    sample_data["spectrum"] = _spe
     try:
         sample_data.apply(lambda row: None if row["spectrum"] is None else row["spectrum"].plot(ax=ax,label="{} {} ({})".format(os.path.basename(row["file_name"]), row["background"], row["overexposed"])),axis=1)
     except Exception as err:
@@ -66,10 +71,15 @@ for group_keys, sample_data in grouped_df:
 
             print(background_only_file.iloc[0])
     else:
-        print("No rows found with 'Background_Only'.")
+        print("No rows found with 'BACKGROUND_ONLY'.")
 
 df.to_hdf(product["h5"], key='templates_read', mode='w')
 df.to_excel(product["xlsx"], sheet_name='templates_read', index=False)    
+
+df_bkg_subtracted = df.loc[df["background"] == "BACKGROUND_SUBTRACTED"]
+for index, row in df_bkg_subtracted.iterrows():
+    spe = Spectrum.from_local_file(row["file_name"])
+    df.loc[df["file_name"] == row["file_name"], "spectrum"] = spe
 
 df_bkg_notsubtracted = df.loc[df["background"] == "BACKGROUND_NOT_SUBTRACTED"]
 
@@ -77,7 +87,7 @@ new_rows = []
 for index, row in df_bkg_notsubtracted.iterrows():
     if row["background_file"] is None:
         continue
-    fig, (ax, tax) = plt.subplots(2, 1, figsize=(15, 5))    
+    fig, (ax, tax) = plt.subplots(2, 1, figsize=(15, 4))    
     print(row["file_name"], row["background_file"])    
     new_row = row.copy()
     if os.path.isfile(row["background_file"]):
@@ -88,6 +98,7 @@ for index, row in df_bkg_notsubtracted.iterrows():
     else:
         spe_bkg_nospikes = None
     if not os.path.isfile(row["file_name"]):
+        print("Can't find file {}".format(row["file_name"]))
         continue
     spe = Spectrum.from_local_file(row["file_name"])
     spe.plot(label="BACKGROUND_NOT_SUBTRACTED {}".format(row["sample"]), ax=ax)    
@@ -102,6 +113,7 @@ for index, row in df_bkg_notsubtracted.iterrows():
     new_spe.plot(label="Background_Substracted {}".format(row["sample"]), ax = ax,linestyle='--')
     new_row["background"] = "BACKGROUND_SUBTRACTED"
     new_rows.append(new_row)
+    #plt.close(fig)
 
 if new_rows:  # Only concatenate if there are new rows to add
     new_df = pd.DataFrame(new_rows)  # Convert list of rows to DataFrame

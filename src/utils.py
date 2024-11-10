@@ -59,7 +59,6 @@ def is_in_skip(_config, key, filename):
 
 
 def get_config_units(_config, key, tag="neon"):
-    # Access the "skip" list safely using .get() with a default empty list
     return _config.get("templates", {}).get(key, {}).get("units", {}).get(tag, "cm-1")
 
 
@@ -68,6 +67,11 @@ def get_config_excludecols(_config, key):
         "date", "time", "measurement", "source", "file_name", "notes", 
         "laser_power_percent",  "laser_power_mW", "background"
         ])
+
+def get_config_findkw(_config, key, tag="si"):
+    print(_config.get("templates", {}).get(key, {}).get("find_kw", {}))
+    return _config.get("templates", {}).get(key, {}).get("find_kw", {}).get(tag, {"wlen": 200, "width": 1})
+
 
 
 def find_peaks(spe_test, profile="Gaussian", find_kw=None, vary_baseline=False):
@@ -80,15 +84,16 @@ def find_peaks(spe_test, profile="Gaussian", find_kw=None, vary_baseline=False):
                                         candidates=cand,
                                         **fit_kw,
                                         no_fit=False,
+                                        bound_centers_to_group=True,
                                         vary_baseline=vary_baseline), cand
 
 
 def plot_si_peak(calmodel, spe_sil, fitres):
-    # plot
-    df = fitres.to_dataframe_peaks().sort_values(by="height", ascending=False)
-    print("The Si peak of the calibrated spectrum (Pearson4)", df.iloc[0]["center"])
-
     fig, ax1 = plt.subplots(1, 1, figsize=(15, 3))
+
+    df = fitres.to_dataframe_peaks()
+    df = df.sort_values(by="height", ascending=False)
+    print("The Si peak of the calibrated spectrum (Pearson4)", df.iloc[0]["center"])
 
     spe_sil.plot(label="Si original", ax=ax1)
     spe_sil_calibrated = calmodel.apply_calibration_x(spe_sil)

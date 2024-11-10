@@ -16,7 +16,7 @@ from ramanchada2.protocols.calibration.calibration_model import CalibrationModel
 import ramanchada2.misc.constants as rc2const
 import matplotlib.pyplot as plt
 import traceback
-from utils import find_peaks, plot_si_peak, get_config_units, load_config
+from utils import find_peaks, plot_si_peak, get_config_units, load_config, get_config_findkw
 import os.path
 
 Path(product["calmodels"]).mkdir(parents=True, exist_ok=True)
@@ -88,8 +88,7 @@ for group_keys, op_data in grouped_df:
     # 
     try:           
         fig, (ax, ax1) = plt.subplots(1, 2, figsize=(15, 3))
-        # find_kw = {"wlen": 200, "width": 1}
-        find_kw = {"wlen": 50, "width": 1}
+        find_kw = get_config_findkw(_config, key, "si")
         # options for finding peaks    
         fit_peaks_kw = {}
         # options for fitting peaks         
@@ -100,7 +99,7 @@ for group_keys, op_data in grouped_df:
         ax.set_xlabel("nm")
         ax.grid()
         print("Number of points {} calibrated {}".format(len(spe_sil.x), len(spe_sil_ne_calib.x)))
-        # print(spe_sil_ne_calib.x, spe_sil_ne_calib.y)
+        print(spe_sil_ne_calib.x, spe_sil_ne_calib.y)
         ax1.scatter(spe_sil.x, spe_sil_ne_calib.x)
         ax1.set_ylabel("nm")
         ax1.set_xlabel("cm-1")
@@ -130,9 +129,15 @@ for group_keys, op_data in grouped_df:
     # let's check the Si peak with Pearson4 profile
     si_peak = 520.45
     spe_sil_calibrated = calmodel1.apply_calibration_x(spe_sil)
+    spe_sil_calibrated.plot()
+    
     _w = 50
-    spe_test = spe_sil_calibrated.trim_axes(method='x-axis',boundaries=(si_peak-_w, si_peak+_w))
-    fitres, cand = find_peaks(spe_test, profile="Pearson4", vary_baseline=True)
+    spe_test = spe_sil_calibrated.trim_axes(method='x-axis', boundaries=(si_peak-_w, si_peak+_w))
+    print(spe_test.x, spe_test.y)
+    fitres, cand = find_peaks(spe_test, profile="Pearson4", find_kw =  
+                              get_config_findkw(_config, key, "si"), vary_baseline=False)
+    assert len(fitres)>0, "No peak found"
+
     plot_si_peak(calmodel1, spe_sil, fitres)
     calmodel1.save(os.path.join(product["calmodels"], f"calmodel_{laser_wl}_{optical_path}.pkl"))
 

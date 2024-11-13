@@ -3,26 +3,26 @@ tasks:
   - source: spectraframe_load.py
     name: "spectraframe_[[key]]"    
     product: 
-      nb: "{{config_output}}/[[key]]/spectraframe_load.ipynb"
+      nb: "{{config_output}}/[[key]]/spectraframe_load.html"
       h5: "{{config_output}}/[[key]]/spectraframe_load.h5"
       xlsx: "{{config_output}}/[[key]]/spectraframe_load.xlsx"
     params:
       config_templates: "{{config_templates}}"
       config_root: "{{config_root}}"
     grid:
-      key: ["01","04","07","0121","0122"]
+      key: ["0101","0401","0402","0701","01001","01201","01202"]
 
   - source: spectraframe_calibrate.py
     name: "spectracal_[[key]]"    
     product: 
-      nb: "{{config_output}}/[[key]]/spectracal.ipynb"
-      calmodels: "{{config_output}}/[[key]]/calmodels"
+      nb: "{{config_output}}_{{fit_ne_peaks}}/[[key]]/spectracal.ipynb"
+      calmodels: "{{config_output}}_{{fit_ne_peaks}}/[[key]]/calmodels"
     params:
       config_templates: "{{config_templates}}"
       config_root: "{{config_root}}"
       neon_tag: "{{ne_tag}}"
       si_tag: "{{si_tag}}"
       pst_tag: "{{pst_tag}}"
-      fit_neon_peaks: False   
+      fit_neon_peaks: "{{fit_ne_peaks}}"   
     grid:
-      key: ["01","07","0121","0122"]
+      key: ["0101","0402","0701","01001","01201","01202"]

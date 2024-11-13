@@ -1,5 +1,20 @@
+from pathlib import Path
+import pandas as pd
+from ramanchada2.protocols.calibration.calibration_model import CalibrationModel
+from ramanchada2.spectrum import Spectrum
+import ramanchada2.misc.constants as rc2const
+import matplotlib.pyplot as plt
+import traceback
+from utils import (find_peaks, plot_si_peak, get_config_units, 
+                   load_config, get_config_findkw)
+import os.path
+import numpy as np
+
 # + tags=["parameters"]
-upstream = ["spectraframe_01", "spectraframe_04", "spectraframe_07", "spectraframe_0121", "spectraframe_0122"]
+upstream = ["spectraframe_0101", "spectraframe_0402", 
+            "spectraframe_0701", "spectraframe_01001", "spectraframe_01201",
+            "spectraframe_01202"]
+
 product = None
 config_templates: "{{config_templates}}"
 config_root: "{{config_root}}"
@@ -9,15 +24,6 @@ si_tag = None
 pst_tag = None
 fit_neon_peaks = None
 # -
-
-from pathlib import Path
-import pandas as pd
-from ramanchada2.protocols.calibration.calibration_model import CalibrationModel
-import ramanchada2.misc.constants as rc2const
-import matplotlib.pyplot as plt
-import traceback
-from utils import find_peaks, plot_si_peak, get_config_units, load_config, get_config_findkw
-import os.path
 
 Path(product["calmodels"]).mkdir(parents=True, exist_ok=True)
 df = pd.read_hdf(upstream[f"spectraframe_{key}"]["h5"], key="templates_read")
@@ -55,7 +61,7 @@ for group_keys, op_data in grouped_df:
         # options for fitting peaks
 
         calmodel1 = CalibrationModel(laser_wl)
-        calmodel1.nonmonotonic = "drop"
+        calmodel1.nonmonotonic = "none"
         # create CalibrationModel class. it does not derive a curve at this moment!
         calmodel1.prominence_coeff = 3
         find_kw["prominence"] = spe_neon.y_noise_MAD() * calmodel1.prominence_coeff
@@ -99,7 +105,7 @@ for group_keys, op_data in grouped_df:
         ax.set_xlabel("nm")
         ax.grid()
         print("Number of points {} calibrated {}".format(len(spe_sil.x), len(spe_sil_ne_calib.x)))
-        print(spe_sil_ne_calib.x, spe_sil_ne_calib.y)
+        #print(spe_sil_ne_calib.x, spe_sil_ne_calib.y)
         ax1.scatter(spe_sil.x, spe_sil_ne_calib.x)
         ax1.set_ylabel("nm")
         ax1.set_xlabel("cm-1")
@@ -129,16 +135,17 @@ for group_keys, op_data in grouped_df:
     # let's check the Si peak with Pearson4 profile
     si_peak = 520.45
     spe_sil_calibrated = calmodel1.apply_calibration_x(spe_sil)
-    spe_sil_calibrated.plot()
+    has_nan = np.any(np.isnan(spe_sil_calibrated.x))
+    print(has_nan)
     
     _w = 50
     spe_test = spe_sil_calibrated.trim_axes(method='x-axis', boundaries=(si_peak-_w, si_peak+_w))
-    print(spe_test.x, spe_test.y)
+    #print(spe_test.x, spe_test.y)
     fitres, cand = find_peaks(spe_test, profile="Pearson4", find_kw =  
                               get_config_findkw(_config, key, "si"), vary_baseline=False)
     assert len(fitres)>0, "No peak found"
 
-    plot_si_peak(calmodel1, spe_sil, fitres)
+    plot_si_peak(spe_sil, spe_test, fitres)
     calmodel1.save(os.path.join(product["calmodels"], f"calmodel_{laser_wl}_{optical_path}.pkl"))
 
     spe_pst = op_data.loc[op_data["sample"] == pst_tag]["spectrum"].iloc[0]

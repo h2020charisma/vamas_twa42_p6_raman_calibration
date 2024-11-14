@@ -101,7 +101,7 @@ for index, row in df_bkg_notsubtracted.iterrows():
         print("Can't find file {}".format(row["file_name"]))
         continue
     spe = Spectrum.from_local_file(row["file_name"])
-    spe.plot(label="BACKGROUND_NOT_SUBTRACTED {}".format(row["sample"]), ax=ax)    
+    spe.plot(label="BACKGROUND_NOT_SUBTRACTED {} ({})".format(row["sample"],row["optical_path"]), ax=ax)    
 
     new_spe = spe if is_in_skip(_config, key, filename=os.path.basename(row["background_file"])) or spe_bkg_nospikes is None else spe - spe_bkg_nospikes
     # new_spe.y[new_spe.y < 0] = 0
@@ -110,7 +110,7 @@ for index, row in df_bkg_notsubtracted.iterrows():
     #new_spe = new_spe.recover_spikes()
 
     new_row["spectrum"] = new_spe
-    new_spe.plot(label="Background_Substracted {}".format(row["sample"]), ax = ax,linestyle='--')
+    new_spe.plot(label="Background_Substracted {} ({})".format(row["sample"],row["optical_path"]), ax = ax,linestyle='--')
     new_row["background"] = "BACKGROUND_SUBTRACTED"
     new_rows.append(new_row)
     #plt.close(fig)

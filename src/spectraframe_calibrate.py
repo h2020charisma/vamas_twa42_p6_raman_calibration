@@ -22,6 +22,7 @@ key = None
 neon_tag = None
 si_tag = None
 pst_tag = None
+apap_tag = None
 fit_neon_peaks = None
 # -
 
@@ -97,16 +98,24 @@ for group_keys, op_data in grouped_df:
         find_kw = get_config_findkw(_config, key, "si")
         # options for finding peaks    
         fit_peaks_kw = {}
-        # options for fitting peaks         
+        # options for fitting peaks       
+
+        if len(spe_sil.x) < 0:
+            offset = (max(spe_sil.x)-min(spe_sil.x))/len(spe_sil.x)
+            offset=offset / 4
+            spe_sil_resampled = spe_sil.resample_spline_filter((min(spe_sil.x)+offset, max(spe_sil.x)-offset), int(len(spe_sil.x)*4/3), spline='akima', cumulative=False)
+        else:
+            spe_sil_resampled = spe_sil
+
         spe_sil_ne_calib = model_neon1.process(
-            spe_sil, spe_units="cm-1", convert_back=False
+            spe_sil_resampled, spe_units="cm-1", convert_back=False
         )
-        spe_sil_ne_calib.plot(ax=ax, label="Si [Ne calibrated only]", fmt='+-')
+        spe_sil_ne_calib.plot(ax=ax, label="Si [Ne calibrated only] len={}".format(len(spe_sil_ne_calib.x)), fmt='+-')
         ax.set_xlabel("nm")
         ax.grid()
         print("Number of points {} calibrated {}".format(len(spe_sil.x), len(spe_sil_ne_calib.x)))
         #print(spe_sil_ne_calib.x, spe_sil_ne_calib.y)
-        ax1.scatter(spe_sil.x, spe_sil_ne_calib.x)
+        ax1.scatter(spe_sil_resampled.x, spe_sil_ne_calib.x)
         ax1.set_ylabel("nm")
         ax1.set_xlabel("cm-1")
         ax1.grid()
@@ -123,9 +132,14 @@ for group_keys, op_data in grouped_df:
             fit_peaks_kw=fit_peaks_kw,
             should_fit=True,
             name="Si calibration",
-            profile="Pearson4"
+            #profile="Pearson4"
+            profile="Gaussian"
         )
+        ax.axvline(x=model_si.model, color='black', linestyle='--', linewidth=2, label="Peak found {:.3f} nm".format(model_si.model))
         print(model_si)
+        model_si.fit_res.plot(ax=ax, label="fitres",  linestyle='--')
+        print("fit_res", model_si.fit_res)
+        print(len(spe_sil_ne_calib.x))
         print("peaks", model_si.peaks)
     except Exception as err:
         traceback.print_exc()
@@ -148,9 +162,23 @@ for group_keys, op_data in grouped_df:
     plot_si_peak(spe_sil, spe_test, fitres)
     calmodel1.save(os.path.join(product["calmodels"], f"calmodel_{laser_wl}_{optical_path}.pkl"))
 
-    spe_pst = op_data.loc[op_data["sample"] == pst_tag]["spectrum"].iloc[0]
-    spe_pst_calibrated = calmodel1.apply_calibration_x(spe_pst)
-    fig, ax = plt.subplots(1, 1, figsize=(15, 3))
-    spe_pst.plot(label=pst_tag, ax=ax)
-    spe_pst_calibrated.plot(label=f"calibrated {pst_tag}", ax=ax ,linestyle='--')
-    ax.grid()
+    fig, (ax_pst, ax_apap) = plt.subplots(1, 2, figsize=(15, 3))
+
+    try:
+        spe_pst = op_data.loc[op_data["sample"] == pst_tag]["spectrum"].iloc[0]
+        spe_pst_calibrated = calmodel1.apply_calibration_x(spe_pst)
+        spe_pst.plot(label=pst_tag, ax=ax_pst)
+        spe_pst_calibrated.plot(label=f"calibrated {pst_tag}", ax=ax_pst, linestyle='--')
+        ax_pst.grid()
+    except Exception as err:
+        print(err)
+
+    try:
+        spe_apap = op_data.loc[op_data["sample"] == apap_tag]["spectrum"].iloc[0]
+        spe_apap_calibrated = calmodel1.apply_calibration_x(spe_apap)
+        spe_apap.plot(label=apap_tag, ax=ax_apap)
+        spe_apap_calibrated.plot(label=f"calibrated {apap_tag}", ax=ax_apap, linestyle='--')
+        ax_apap.grid()    
+    except Exception as err:
+        print(err)
+

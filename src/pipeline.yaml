@@ -3,7 +3,7 @@ tasks:
   - source: spectraframe_load.py
     name: "spectraframe_[[key]]"    
     product: 
-      nb: "{{config_output}}/[[key]]/spectraframe_load.html"
+      nb: "{{config_output}}/[[key]]/spectraframe_load.ipynb"
       h5: "{{config_output}}/[[key]]/spectraframe_load.h5"
       xlsx: "{{config_output}}/[[key]]/spectraframe_load.xlsx"
     params:
@@ -23,6 +23,7 @@ tasks:
       neon_tag: "{{ne_tag}}"
       si_tag: "{{si_tag}}"
       pst_tag: "{{pst_tag}}"
+      apap_tag: "{{apap_tag}}"
       fit_neon_peaks: "{{fit_ne_peaks}}"   
     grid:
-      key: ["0101","0402","0701","01001","01201","01202"]
+      key: ["0101","0701","01001","01201","01202"]

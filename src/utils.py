@@ -94,7 +94,7 @@ def plot_si_peak(spe_sil, spe_sil_calibrated, fitres):
 
     df = fitres.to_dataframe_peaks()
     df = df.sort_values(by="height", ascending=False)
-    print("The Si peak of the calibrated spectrum (Pearson4)", df.iloc[0]["center"])
+    print("The Si peak of the calibrated spectrum (Pearson4)", df.iloc[0]["position"])
 
     spe_sil.plot(label="Si original", ax=ax1)
     spe_sil_calibrated.plot(ax=ax1, label="Si calibrated")
@@ -104,7 +104,7 @@ def plot_si_peak(spe_sil, spe_sil_calibrated, fitres):
     # ax1.set_xlim(300, max(spe_sil.x))
     ax1.axvline(x=520.45, color='red', linestyle='-', linewidth=2, label="Reference 520.45 cm-1")
 
-    ax1.axvline(x=df.iloc[0]["center"], color='black', linestyle=':', linewidth=2, label="Si peak {:.3f} cm-1".format(df.iloc[0]["center"]))
+    ax1.axvline(x=df.iloc[0]["position"], color='black', linestyle=':', linewidth=2, label="Si peak {:.3f} cm-1".format(df.iloc[0]["position"]))
     #cand.plot(ax=ax1,label="candidates")     
     fitres.plot(ax=ax1.twinx(),label="fit res",color="magenta")
     ax1.legend()

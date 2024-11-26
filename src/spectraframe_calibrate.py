@@ -1,7 +1,6 @@
 from pathlib import Path
 import pandas as pd
 from ramanchada2.protocols.calibration.calibration_model import CalibrationModel
-from ramanchada2.spectrum import Spectrum
 import ramanchada2.misc.constants as rc2const
 import matplotlib.pyplot as plt
 import traceback
@@ -11,8 +10,8 @@ import os.path
 import numpy as np
 
 # + tags=["parameters"]
-upstream = ["spectraframe_0101", "spectraframe_0402", 
-            "spectraframe_0701", "spectraframe_01001", "spectraframe_01201",
+upstream = ["spectraframe_0101", "spectraframe_0402", "spectraframe_0701", 
+            "spectraframe_0801", "spectraframe_01001", "spectraframe_01201",
             "spectraframe_01202"]
 
 product = None
@@ -62,7 +61,7 @@ for group_keys, op_data in grouped_df:
         # options for fitting peaks
 
         calmodel1 = CalibrationModel(laser_wl)
-        calmodel1.nonmonotonic = "none"
+        calmodel1.nonmonotonic = "drop"
         # create CalibrationModel class. it does not derive a curve at this moment!
         calmodel1.prominence_coeff = 3
         find_kw["prominence"] = spe_neon.y_noise_MAD() * calmodel1.prominence_coeff
@@ -78,7 +77,7 @@ for group_keys, op_data in grouped_df:
             name="Neon calibration",
             match_method="argmin2d",
             interpolator_method="pchip",
-            extrapolate=False
+            extrapolate=True
         )
         # now derive_model_curve finds peaks, fits peaks, matches peaks and derives the calibration curve
         # and model_neon.process() could be applied to Si or other spectra
@@ -114,12 +113,14 @@ for group_keys, op_data in grouped_df:
         ax.set_xlabel("nm")
         ax.grid()
         print("Number of points {} calibrated {}".format(len(spe_sil.x), len(spe_sil_ne_calib.x)))
-        #print(spe_sil_ne_calib.x, spe_sil_ne_calib.y)
-        ax1.scatter(spe_sil_resampled.x, spe_sil_ne_calib.x)
+        print(spe_sil_ne_calib.x, spe_sil_ne_calib.y)
+        # ax1.scatter(spe_sil_resampled.x, spe_sil_ne_calib.x)
         ax1.set_ylabel("nm")
         ax1.set_xlabel("cm-1")
         ax1.grid()
         calmodel1.prominence_coeff = 3
+        # in case there are nans from the calibration curve extrapolation
+        spe_sil_ne_calib = spe_sil_ne_calib.dropna()
         find_kw["prominence"] = (
             spe_sil_ne_calib.y_noise_MAD() * calmodel1.prominence_coeff
         )
@@ -132,8 +133,8 @@ for group_keys, op_data in grouped_df:
             fit_peaks_kw=fit_peaks_kw,
             should_fit=True,
             name="Si calibration",
-            #profile="Pearson4"
-            profile="Gaussian"
+            profile="Pearson4"
+            # profile="Gaussian"
         )
         ax.axvline(x=model_si.model, color='black', linestyle='--', linewidth=2, label="Peak found {:.3f} nm".format(model_si.model))
         print(model_si)
@@ -153,7 +154,7 @@ for group_keys, op_data in grouped_df:
     print(has_nan)
     
     _w = 50
-    spe_test = spe_sil_calibrated.trim_axes(method='x-axis', boundaries=(si_peak-_w, si_peak+_w))
+    spe_test = spe_sil_calibrated.dropna().trim_axes(method='x-axis', boundaries=(si_peak-_w, si_peak+_w))
     #print(spe_test.x, spe_test.y)
     fitres, cand = find_peaks(spe_test, profile="Pearson4", find_kw =  
                               get_config_findkw(_config, key, "si"), vary_baseline=False)
@@ -178,7 +179,7 @@ for group_keys, op_data in grouped_df:
         spe_apap_calibrated = calmodel1.apply_calibration_x(spe_apap)
         spe_apap.plot(label=apap_tag, ax=ax_apap)
         spe_apap_calibrated.plot(label=f"calibrated {apap_tag}", ax=ax_apap, linestyle='--')
-        ax_apap.grid()    
+        ax_apap.grid()
     except Exception as err:
         print(err)
 

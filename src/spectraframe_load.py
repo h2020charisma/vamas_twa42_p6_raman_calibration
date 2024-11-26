@@ -1,3 +1,14 @@
+from ramanchada2.spectrum import Spectrum
+from utils import (
+    read_template, load_config, is_in_skip, 
+    get_config_excludecols
+)
+import os.path
+from pathlib import Path
+import matplotlib.pyplot as plt
+import pandas as pd
+
+
 # + tags=["parameters"]
 upstream = []
 product = None
@@ -6,16 +17,9 @@ config_root = None
 key = None
 # -
 
-from ramanchada2.protocols.spectraframe import SpectraFrame
-from ramanchada2.spectrum import Spectrum
-from utils import read_template, load_config, is_in_skip, get_config_excludecols
-import os.path
-from pathlib import Path
-import matplotlib.pyplot as plt
-import pandas as pd
 
 _config = load_config(os.path.join(config_root, config_templates))
-print(key,_config["templates"].keys())
+print(key, _config["templates"].keys())
 
 Path(os.path.dirname(product["h5"])).mkdir(parents=True, exist_ok=True)
 
@@ -32,8 +36,7 @@ df["source"] = str(entry)
 exclude_cols = get_config_excludecols(_config, key)
 
 print(exclude_cols)
-# ["date", "time", "measurement", "source", "file_name", "notes", "laser_power_percent",  "laser_power_mW", "background"]
-# ['date', 'time', 'measurement', 'source', 'file_name', 'notes', 'laser_power_percent', 'integration_time_ms', 'humidity' ,'laser_power_mW', 'background']
+
 # Get columns to group by
 
 start_col = 'optical_path'  # specify the column you want to start grouping with
@@ -49,10 +52,13 @@ grouped_df = df.groupby(groupby_cols, dropna=False)
 for group_keys, sample_data in grouped_df:
     print(sample_data.shape, group_keys)
     fig, ax = plt.subplots(1, 1, figsize=(15,3))
+    ax.title.set_text(group_keys)
     _spe = sample_data.apply(lambda row: Spectrum.from_local_file(row["file_name"]) if os.path.isfile(row["file_name"]) else None, axis=1)
     sample_data["spectrum"] = _spe
     try:
-        sample_data.apply(lambda row: None if row["spectrum"] is None else row["spectrum"].plot(ax=ax,label="{} {} ({})".format(os.path.basename(row["file_name"]), row["background"], row["overexposed"])),axis=1)
+        sample_data.apply(lambda row: None if row["spectrum"] is None else row["spectrum"].plot(
+            ax=ax, label="{} {} ({})".format(os.path.basename(row["file_name"]), row["background"], row["overexposed"])),
+            axis=1)
     except Exception as err:
         print(err)
     if sample_data.shape[0] < 2:
@@ -64,7 +70,7 @@ for group_keys, sample_data in grouped_df:
         else:
             # Assign the first "Background_Only" file_name to rows where background is "Background_Not_Subtracted"
             df.loc[
-                (df["file_name"].isin(sample_data["file_name"])) & 
+                (df["file_name"].isin(sample_data["file_name"])) &
                 (df["background"] == "BACKGROUND_NOT_SUBTRACTED"), 
                 "background_file"
             ] = background_only_file.iloc[0]
@@ -87,7 +93,8 @@ new_rows = []
 for index, row in df_bkg_notsubtracted.iterrows():
     if row["background_file"] is None:
         continue
-    fig, (ax, tax) = plt.subplots(2, 1, figsize=(15, 4))    
+    fig, (ax, tax) = plt.subplots(2, 1, figsize=(15, 4))
+    ax.title.set_text(os.path.basename(row["file_name"])) 
     print(row["file_name"], row["background_file"])    
     new_row = row.copy()
     if os.path.isfile(row["background_file"]):
@@ -99,18 +106,20 @@ for index, row in df_bkg_notsubtracted.iterrows():
         spe_bkg_nospikes = None
     if not os.path.isfile(row["file_name"]):
         print("Can't find file {}".format(row["file_name"]))
+        ax.title.set_text("Can't find file {}".format(os.path.basename(row["file_name"]))) 
         continue
     spe = Spectrum.from_local_file(row["file_name"])
-    spe.plot(label="BACKGROUND_NOT_SUBTRACTED {} ({})".format(row["sample"],row["optical_path"]), ax=ax)    
+    spe.plot(label="BACKGROUND_NOT_SUBTRACTED {} ({})".format(row["sample"], row["optical_path"]), ax=ax)    
 
     new_spe = spe if is_in_skip(_config, key, filename=os.path.basename(row["background_file"])) or spe_bkg_nospikes is None else spe - spe_bkg_nospikes
     # new_spe.y[new_spe.y < 0] = 0
     # remove pedestal
-    #new_spe.y = new_spe.y - np.min(new_spe.y)
-    #new_spe = new_spe.recover_spikes()
+    # new_spe.y = new_spe.y - np.min(new_spe.y)
+    # new_spe = new_spe.recover_spikes()
 
     new_row["spectrum"] = new_spe
-    new_spe.plot(label="Background_Substracted {} ({})".format(row["sample"],row["optical_path"]), ax = ax,linestyle='--')
+    new_spe.plot(label="Background_Substracted {} ({})".format(row["sample"], 
+                                    row["optical_path"]), ax=ax, linestyle='--')
     new_row["background"] = "BACKGROUND_SUBTRACTED"
     new_rows.append(new_row)
     #plt.close(fig)

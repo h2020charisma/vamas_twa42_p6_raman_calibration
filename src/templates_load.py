@@ -17,6 +17,7 @@ import os.path
 from pathlib import Path
 import matplotlib.pyplot as plt
 from IPython.display import display
+from ramanchada2.protocols.spectraframe import SpectraFrame
 
 metadata = pd.read_hdf(upstream["templates_read"]["h5"], key="templates_read")
 metadata.head()
@@ -27,7 +28,6 @@ for index, string in enumerate(set([neon_tag, si_tag, pst_tag])):
 
 
 def load_spectrum(df, tag=None):
-    display(df)
     row = 0 # tbd select based on SNR
     _file = os.path.join(config_root, df["filename"].iloc[row])
     print("********", _file)
@@ -83,6 +83,10 @@ def read_tag(op_meta, tag, _path, boundaries=None, baseline=False,
         return spe
     return None
 
+def load_spectrum_df(row):
+    print(row["file_name"])
+    spe = rc2.spectrum.Spectrum.from_local_file(os.path.join(config_root,row["file_name"]))
+    return spe
 
 grouped_df = metadata.groupby(['investigation', 'provider', 'optical_path'])
 trim_left = 100
@@ -111,12 +115,22 @@ for group_keys, group_data in grouped_df:
     _path = os.path.join(_toppath, str(int(wavelength)), op)
     Path(_path).mkdir(parents=True, exist_ok=True)
 
+    print(neon_meta.shape)
+
+    frame_neon = SpectraFrame.from_dataframe(neon_meta.copy(),
+                        {"filename": "file_name",
+                         "instrument_make": "device",
+                         "instrument_model": "device_id",
+                         "wavelength": "laser_wl",
+                         "integration_time_ms": "time_ms"})
+    frame_neon["spectrum"] = frame_neon.apply(load_spectrum_df, axis=1)
+    
     spe_neon, _file = load_spectrum(neon_meta, neon_tag)
     file_path = os.path.join(_path, "{}.cha".format(neon_tag))
     if os.path.exists(file_path):
         os.remove(file_path)
     if min(spe_neon.x) < 0:
-        spe_neon = spe_neon.trim_axes(method='x-axis',boundaries=(trim_left, max(spe_neon.x)))
+        spe_neon = spe_neon.trim_axes(method='x-axis', boundaries=(trim_left, max(spe_neon.x)))
         print(max(spe_neon.x))
 
     print("*****meta", spe_neon.meta)      

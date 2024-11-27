@@ -90,20 +90,26 @@ for key in upstream["spectracal_*"].keys():
         fig.suptitle(_id)
         axes = {"PST": ax, "APAP": ax1, "CAL": ax2 , "S0N" : ax3, "S0B" : ax3}
         for tag, axis in axes.items():
-            axis.grid()
             try:
+                boundaries = (200, 3*1024+200)
+                bins = 2048
+                strategy = "unity"
                 spe = average_spe(op_data, tag)
-                # spe.plot(ax=axis, label=tag)
+                if tag in ["S0N", "S0B"]:
+                    spe = spe.trim_axes(method='x-axis', boundaries=(520.45-100,520.45 + 100))
+                else:
+                    spe = spe.trim_axes(method='x-axis', boundaries=boundaries)
+                spe.plot(ax=axis, label=tag)
                 spe_calibrated = calmodel.apply_calibration_x(spe)
-                # spe_calibrated.plot(ax=axis, label=f"{tag} x-calibrated",linestyle='--', linewidth=1)
+                spe_calibrated.plot(ax=axis, label=f"{tag} x-calibrated",linestyle='--', linewidth=1)
 
-                spe_resampled = spe.resample_spline_filter(x_range=(50, 3400), xnew_bins=2048,spline='akima')
-                spe_resampled = spe_resampled.subtract_baseline_rc1_snip(niter= 40).normalize(strategy="L2")
-                spe_cal_resampled = spe_calibrated.resample_spline_filter(x_range=(50, 3400), xnew_bins=2048,spline='akima')
-                spe_cal_resampled = spe_cal_resampled.subtract_baseline_rc1_snip(niter= 40).normalize(strategy="L2")
+                spe_resampled = spe.resample_spline_filter(x_range=boundaries, xnew_bins=bins, spline='akima')
+                spe_resampled = spe_resampled.subtract_baseline_rc1_snip(niter= 40).normalize(strategy=strategy)
+                spe_cal_resampled = spe_calibrated.resample_spline_filter(x_range=boundaries, xnew_bins=bins, spline='akima')
+                spe_cal_resampled = spe_cal_resampled.subtract_baseline_rc1_snip(niter= 40).normalize(strategy=strategy)
 
-                spe_resampled.plot(ax=axis, label=tag)                
-                spe_cal_resampled.plot(ax=axis, label=f"{tag} x-calibrated",linestyle='--', linewidth=1)
+                # spe_resampled.plot(ax=axis, label=tag)                
+                # spe_cal_resampled.plot(ax=axis, label=f"{tag} x-calibrated",linestyle='--', linewidth=1)
                 if tag not in original:
                     original[tag] = { "y" : [] , "id" : [] }
                 original[tag]["y"].append(spe_resampled.y)
@@ -114,7 +120,7 @@ for key in upstream["spectracal_*"].keys():
                 calibrated[tag]["id"].append(_id)
             except Exception as err:
                 print(err)
-
+            axis.grid()
 
 for tag in original:
     print(tag)

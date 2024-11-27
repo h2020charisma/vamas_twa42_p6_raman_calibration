@@ -3,7 +3,11 @@ import pandas as pd
 from IPython.display import display
 import matplotlib.pyplot as plt
 from ramanchada2.protocols.calibration.calibration_model import CalibrationModel
-from utils import (find_peaks, plot_si_peak, load_config, get_config_findkw)
+from utils import (find_peaks, plot_si_peak, load_config, 
+                   get_config_findkw, plot_biclustering)
+from sklearn.metrics.pairwise import cosine_similarity
+import numpy as np
+
 
 # + tags=["parameters"]
 product = None
@@ -45,6 +49,21 @@ def average_spe(df, tag):
         spe_sum = spe_sil if spe_sum is None else spe_sum+spe_sil
     return spe_sum/len(spes)
 
+def plot_distances(pairwise_distances,identifiers):
+    plt.figure(figsize=(8, 6))
+    plt.imshow(pairwise_distances, cmap='YlGnBu', interpolation='nearest')
+    plt.colorbar(label='Cosine similarity')
+    plt.xticks(ticks=np.arange(len(identifiers)), labels=identifiers,rotation=90)
+    plt.yticks(ticks=np.arange(len(identifiers)), labels=identifiers)
+    plt.title('Cosine Distance Heatmap')
+    plt.xlabel('Spectra')
+    plt.ylabel('Spectra')
+    plt.show()
+
+
+
+original = {}
+calibrated = {}
 
 for key in upstream["spectracal_*"].keys():
     # print(key)
@@ -66,16 +85,59 @@ for key in upstream["spectracal_*"].keys():
         spe_sil = average_spe(op_data, "S0B").trim_axes(method='x-axis', 
                                                         boundaries=(520.45-50, 520.45+50))
         plot_model(calmodel, entry, laser_wl, optical_path, [spe_sil])
-        fig, (ax, ax1, ax2) = plt.subplots(1, 3, figsize=(15, 3))
-        fig.suptitle(f"[{entry}] {laser_wl}nm {optical_path}")
-        axes = {"PST": ax, "APAP": ax1, "CAL": ax2}
+        fig, (ax, ax1, ax2, ax3) = plt.subplots(1, 4, figsize=(15, 3))
+        _id = f"[{entry}] {laser_wl}nm {optical_path}"
+        fig.suptitle(_id)
+        axes = {"PST": ax, "APAP": ax1, "CAL": ax2 , "S0N" : ax3, "S0B" : ax3}
         for tag, axis in axes.items():
             axis.grid()
             try:
                 spe = average_spe(op_data, tag)
-                spe.plot(ax=axis, label=tag)
+                # spe.plot(ax=axis, label=tag)
                 spe_calibrated = calmodel.apply_calibration_x(spe)
-                spe_calibrated.plot(ax=axis, label=f"{tag} calibrated",linestyle='--', linewidth=1)
-            except Exception:
-                pass
+                # spe_calibrated.plot(ax=axis, label=f"{tag} x-calibrated",linestyle='--', linewidth=1)
 
+                spe_resampled = spe.resample_spline_filter(x_range=(50, 3400), xnew_bins=2048,spline='akima')
+                spe_resampled = spe_resampled.subtract_baseline_rc1_snip(niter= 40).normalize(strategy="L2")
+                spe_cal_resampled = spe_calibrated.resample_spline_filter(x_range=(50, 3400), xnew_bins=2048,spline='akima')
+                spe_cal_resampled = spe_cal_resampled.subtract_baseline_rc1_snip(niter= 40).normalize(strategy="L2")
+
+                spe_resampled.plot(ax=axis, label=tag)                
+                spe_cal_resampled.plot(ax=axis, label=f"{tag} x-calibrated",linestyle='--', linewidth=1)
+                if tag not in original:
+                    original[tag] = { "y" : [] , "id" : [] }
+                original[tag]["y"].append(spe_resampled.y)
+                original[tag]["id"].append(_id)
+                if tag not in calibrated:
+                    calibrated[tag] = { "y" : [] , "id" : [] }
+                calibrated[tag]["y"].append(spe_cal_resampled.y)                    
+                calibrated[tag]["id"].append(_id)
+            except Exception as err:
+                print(err)
+
+
+for tag in original:
+    print(tag)
+    
+    label = ["original", "x-calibrated"]
+    y_original = original[tag]["y"]
+    y_calibrated = calibrated[tag]["y"]
+    id_original = original[tag]["id"]
+    id_calibrated = calibrated[tag]["id"]
+    print(tag, id_original)
+    print(id_calibrated)
+    ids = [id_original, id_calibrated]
+    fig, ax = plt.subplots(2, 2, figsize=(16,8))  
+    fig.suptitle(tag)
+    for index, y in enumerate([y_original, y_calibrated]):
+        cos_sim_matrix = cosine_similarity(y)
+        upper_tri_indices = np.triu_indices_from(cos_sim_matrix, k=1)
+        cos_sim_values = cos_sim_matrix[upper_tri_indices]
+        # Step 3: Plot the distribution
+        ax[index, 0].hist(cos_sim_values, bins=10, color='blue', edgecolor='black')
+        plt.title('Distribution of Cosine Similarities ({} spectra)'.format(label[index]))
+        plt.xlabel('Cosine Similarity')
+        plt.ylabel('Frequency')
+        plot_biclustering(cos_sim_matrix, ids[index], title="Cosine similarity {} spectra".format(label[index]), ax=ax[index, 1])
+        ax[index, 0].set_title("{} [{:.2f}|{:.2f}|{:.2f}]".format("Cosine similarity histogram", np.min(cos_sim_matrix), np.mean(cos_sim_matrix), np.max(cos_sim_matrix)))
+    plt.show()

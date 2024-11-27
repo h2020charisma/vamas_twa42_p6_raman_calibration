@@ -3,6 +3,8 @@ import os.path
 import json
 from ramanchada2.spectrum import Spectrum
 import matplotlib.pyplot as plt 
+import numpy as np
+from sklearn.cluster import SpectralBiclustering
 
 
 def load_config(path):
@@ -110,3 +112,29 @@ def plot_si_peak(spe_sil, spe_sil_calibrated, fitres= None, ax=None):
     ax1.legend()
     ax1.grid()
 
+
+def plot_biclustering(pairwise_distances, identifiers, title='Cosine similarity Heatmap',ax=None):
+    
+    # Perform biclustering
+    model = SpectralBiclustering(n_clusters=(3, 3), method='log', random_state=0)
+    model.fit(pairwise_distances)
+    
+    # Reorder the rows and columns based on the clustering
+    fit_data = pairwise_distances[np.argsort(model.row_labels_)]
+    fit_data = fit_data[:, np.argsort(model.column_labels_)]
+
+    cax = ax.imshow(fit_data, cmap='YlGnBu', interpolation='nearest', vmin=0, vmax=1)
+    plt.colorbar(cax, ax=ax, label='Cosine similarity')
+    
+    # Set ticks and labels
+    ax.set_xticks(np.arange(len(identifiers)))
+    ax.set_xticklabels(np.array(identifiers)[np.argsort(model.column_labels_)], rotation=90)
+    ax.set_yticks(np.arange(len(identifiers)))
+    ax.set_yticklabels(np.array(identifiers)[np.argsort(model.row_labels_)])
+    
+    # Set title and labels
+    ax.set_title(title)
+
+    ax.set_xlabel('Spectra')
+    ax.set_ylabel('Spectra')
+    

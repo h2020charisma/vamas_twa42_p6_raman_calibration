@@ -51,9 +51,10 @@ grouped_df = df.groupby(groupby_cols, dropna=False)
 # figure out background files
 for group_keys, sample_data in grouped_df:
     print(sample_data.shape, group_keys)
-    fig, ax = plt.subplots(1, 1, figsize=(15,3))
-    ax.title.set_text(group_keys)
+    fig, ax = plt.subplots(1, 1, figsize=(15, 3))
+    ax.title.set_text("{} {}".format(group_keys[0], group_keys[1]))
     _spe = sample_data.apply(lambda row: Spectrum.from_local_file(row["file_name"]) if os.path.isfile(row["file_name"]) else None, axis=1)
+    # .trim_axes(method='x-axis', boundaries=(100, 3400))
     sample_data["spectrum"] = _spe
     try:
         sample_data.apply(lambda row: None if row["spectrum"] is None else row["spectrum"].plot(

@@ -10,7 +10,8 @@ import os.path
 import numpy as np
 
 # + tags=["parameters"]
-upstream = ["spectraframe_0101", "spectraframe_0402", "spectraframe_0701", 
+upstream = ["spectraframe_0101", "spectraframe_0402", "spectraframe_0701",
+            "spectraframe_0601",
             "spectraframe_0801", "spectraframe_01001", "spectraframe_01201",
             "spectraframe_01202"]
 
@@ -36,6 +37,7 @@ df_bkg_substracted = df.loc[df["background"] == "BACKGROUND_SUBTRACTED"]
 print(df_bkg_substracted.shape)
 grouped_df = df_bkg_substracted.groupby(["laser_wl", "optical_path"], dropna=False)
 for group_keys, op_data in grouped_df:
+    _success = False
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 3)) 
     laser_wl = group_keys[0]
     optical_path = group_keys[1]
@@ -43,11 +45,12 @@ for group_keys, op_data in grouped_df:
     ax1.set_title(f"{key} {laser_wl}nm {optical_path}")
     spe_neon = op_data.loc[op_data["sample"] == neon_tag]["spectrum"].iloc[0]
     spe_sil = op_data.loc[op_data["sample"] == si_tag]["spectrum"].iloc[0]
+    spe_sil.plot(ax=ax2, label=si_tag)
 
-    spe_sil = spe_sil.trim_axes(method='x-axis', boundaries=(520.45-50, 520.45+50))
+    spe_sil = spe_sil.trim_axes(method='x-axis', boundaries=(520.45-150, 520.45+150))
     spe_neon.plot(ax=ax1, label=neon_tag)
     ax1.set_xlabel(_ne_units)
-    spe_sil.plot(ax=ax2, label=si_tag)
+    #spe_sil.plot(ax=ax2, label=si_tag)
 
     # False should be used for testing only . Fitting may take a while .
 
@@ -82,17 +85,21 @@ for group_keys, op_data in grouped_df:
         # now derive_model_curve finds peaks, fits peaks, matches peaks and derives the calibration curve
         # and model_neon.process() could be applied to Si or other spectra
         print(model_neon1)
-        #calmodel1.plot(ax=ax2)
-        model_neon1.model.plot(ax=ax3)        
-    except Exception as err:
+        # calmodel1.plot(ax=ax2)
+        model_neon1.model.plot(ax=ax3)
+        _success = True 
+    except Exception:
+        _success = False
         traceback.print_exc()
 
+    if not _success:
+        continue
     ax1.grid()
     ax2.grid()
 
     # The second step of the X calibration - Laser zeroing
-    # 
-    try:           
+
+    try:
         fig, (ax, ax1) = plt.subplots(1, 2, figsize=(15, 3))
         find_kw = get_config_findkw(_config, key, "si")
         # options for finding peaks    
@@ -101,19 +108,20 @@ for group_keys, op_data in grouped_df:
 
         if len(spe_sil.x) < 0:
             offset = (max(spe_sil.x)-min(spe_sil.x))/len(spe_sil.x)
-            offset=offset / 4
-            spe_sil_resampled = spe_sil.resample_spline_filter((min(spe_sil.x)+offset, max(spe_sil.x)-offset), int(len(spe_sil.x)*4/3), spline='akima', cumulative=False)
+            offset = offset / 4
+            spe_sil_resampled = spe_sil.resample_spline_filter(
+                (min(spe_sil.x)+offset, max(spe_sil.x)-offset), 
+                int(len(spe_sil.x)*4/3), spline='akima', cumulative=False)
         else:
             spe_sil_resampled = spe_sil
 
         spe_sil_ne_calib = model_neon1.process(
             spe_sil_resampled, spe_units="cm-1", convert_back=False
         )
-        spe_sil_ne_calib.plot(ax=ax, label="Si [Ne calibrated only] len={}".format(len(spe_sil_ne_calib.x)), fmt='+-')
+        spe_sil_ne_calib.plot(ax=ax, label="Si [Ne calibrated only] len={}".
+                              format(len(spe_sil_ne_calib.x)), fmt='+-')
         ax.set_xlabel("nm")
         ax.grid()
-        print("Number of points {} calibrated {}".format(len(spe_sil.x), len(spe_sil_ne_calib.x)))
-        print(spe_sil_ne_calib.x, spe_sil_ne_calib.y)
         # ax1.scatter(spe_sil_resampled.x, spe_sil_ne_calib.x)
         ax1.set_ylabel("nm")
         ax1.set_xlabel("cm-1")
@@ -142,34 +150,36 @@ for group_keys, op_data in grouped_df:
         print("fit_res", model_si.fit_res)
         print(len(spe_sil_ne_calib.x))
         print("peaks", model_si.peaks)
-    except Exception as err:
+    except Exception:
+        _success = False
         traceback.print_exc()
-        assert False, err
 
-
+    if not _success:
+        continue
     # let's check the Si peak with Pearson4 profile
     si_peak = 520.45
     spe_sil_calibrated = calmodel1.apply_calibration_x(spe_sil)
     has_nan = np.any(np.isnan(spe_sil_calibrated.x))
-    print(has_nan)
-    
     _w = 50
-    spe_test = spe_sil_calibrated.dropna().trim_axes(method='x-axis', boundaries=(si_peak-_w, si_peak+_w))
+    spe_test = spe_sil_calibrated.dropna().trim_axes(method='x-axis', 
+                                                     boundaries=(si_peak-_w, si_peak+_w))
     #print(spe_test.x, spe_test.y)
-    fitres, cand = find_peaks(spe_test, profile="Pearson4", find_kw =  
-                              get_config_findkw(_config, key, "si"), vary_baseline=False)
-    assert len(fitres)>0, "No peak found"
+    fitres, cand = find_peaks(spe_test, 
+                              profile="Pearson4",
+                              find_kw=get_config_findkw(_config, key, "si"),
+                              vary_baseline=False)
+    assert len(fitres) > 0, "No peak found"
 
     plot_si_peak(spe_sil, spe_test, fitres)
-    calmodel1.save(os.path.join(product["calmodels"], f"calmodel_{laser_wl}_{optical_path}.pkl"))
-
+    calmodel1.save(os.path.join(product["calmodels"],
+                                f"calmodel_{laser_wl}_{optical_path}.pkl"))
     fig, (ax_pst, ax_apap) = plt.subplots(1, 2, figsize=(15, 3))
-
     try:
         spe_pst = op_data.loc[op_data["sample"] == pst_tag]["spectrum"].iloc[0]
         spe_pst_calibrated = calmodel1.apply_calibration_x(spe_pst)
         spe_pst.plot(label=pst_tag, ax=ax_pst)
-        spe_pst_calibrated.plot(label=f"calibrated {pst_tag}", ax=ax_pst, linestyle='--')
+        spe_pst_calibrated.plot(label=f"calibrated {pst_tag}", ax=ax_pst, 
+                                linestyle='--')
         ax_pst.grid()
     except Exception as err:
         print(err)
@@ -178,7 +188,8 @@ for group_keys, op_data in grouped_df:
         spe_apap = op_data.loc[op_data["sample"] == apap_tag]["spectrum"].iloc[0]
         spe_apap_calibrated = calmodel1.apply_calibration_x(spe_apap)
         spe_apap.plot(label=apap_tag, ax=ax_apap)
-        spe_apap_calibrated.plot(label=f"calibrated {apap_tag}", ax=ax_apap, linestyle='--')
+        spe_apap_calibrated.plot(label=f"calibrated {apap_tag}", 
+                                 ax=ax_apap, linestyle='--')
         ax_apap.grid()
     except Exception as err:
         print(err)

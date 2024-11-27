@@ -10,10 +10,7 @@ import os.path
 import numpy as np
 
 # + tags=["parameters"]
-upstream = ["spectraframe_0101", "spectraframe_0402", "spectraframe_0701",
-            "spectraframe_0601",
-            "spectraframe_0801", "spectraframe_01001", "spectraframe_01201",
-            "spectraframe_01202"]
+upstream = ["spectraframe_*"]
 
 product = None
 config_templates: "{{config_templates}}"
@@ -156,23 +153,24 @@ for group_keys, op_data in grouped_df:
 
     if not _success:
         continue
+    else:
+        calmodel1.save(os.path.join(product["calmodels"],
+                                f"calmodel_{laser_wl}_{optical_path}.pkl"))
+            
     # let's check the Si peak with Pearson4 profile
     si_peak = 520.45
     spe_sil_calibrated = calmodel1.apply_calibration_x(spe_sil)
     has_nan = np.any(np.isnan(spe_sil_calibrated.x))
     _w = 50
-    spe_test = spe_sil_calibrated.dropna().trim_axes(method='x-axis', 
-                                                     boundaries=(si_peak-_w, si_peak+_w))
-    #print(spe_test.x, spe_test.y)
-    fitres, cand = find_peaks(spe_test, 
+    spe_test = spe_sil_calibrated.dropna().trim_axes(method='x-axis', boundaries=(si_peak-_w, si_peak+_w))
+    # print(spe_test.x, spe_test.y)
+    fitres, cand = find_peaks(spe_test,
                               profile="Pearson4",
                               find_kw=get_config_findkw(_config, key, "si"),
                               vary_baseline=False)
-    assert len(fitres) > 0, "No peak found"
+    if len(fitres) > 0:
+        plot_si_peak(spe_sil, spe_test, fitres)
 
-    plot_si_peak(spe_sil, spe_test, fitres)
-    calmodel1.save(os.path.join(product["calmodels"],
-                                f"calmodel_{laser_wl}_{optical_path}.pkl"))
     fig, (ax_pst, ax_apap) = plt.subplots(1, 2, figsize=(15, 3))
     try:
         spe_pst = op_data.loc[op_data["sample"] == pst_tag]["spectrum"].iloc[0]

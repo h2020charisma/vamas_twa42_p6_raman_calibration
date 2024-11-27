@@ -1,7 +1,11 @@
+meta:
+    extract_upstream: False
+
 tasks:
 
   - source: spectraframe_load.py
-    name: "spectraframe_[[key]]"    
+    name: "spectraframe_[[key]]"
+    upstream: []
     product: 
       nb: "{{config_output}}/[[key]]/spectraframe_load.ipynb"
       h5: "{{config_output}}/[[key]]/spectraframe_load.h5"
@@ -17,6 +21,7 @@ tasks:
     product: 
       nb: "{{config_output}}_{{fit_ne_peaks}}/[[key]]/spectracal.ipynb"
       calmodels: "{{config_output}}_{{fit_ne_peaks}}/[[key]]/calmodels"
+    upstream: "spectraframe_*"      
     params:
       config_templates: "{{config_templates}}"
       config_root: "{{config_root}}"
@@ -27,3 +32,13 @@ tasks:
       fit_neon_peaks: "{{fit_ne_peaks}}"   
     grid:
       key: ["0101","0601","0701","0801","01001","01201","01202"]
+
+ 
+  - source: calibration_verify.py
+    upstream: ["spectraframe_*","spectracal_*"]
+    product: 
+      nb: "{{config_output}}_{{fit_ne_peaks}}/assessment/calibration_verify.ipynb"
+    params:
+      config_templates: "{{config_templates}}"
+      config_root: "{{config_root}}"
+ 

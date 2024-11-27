@@ -10,7 +10,6 @@ import pandas as pd
 
 
 # + tags=["parameters"]
-upstream = []
 product = None
 config_templates = None
 config_root = None
@@ -28,7 +27,7 @@ entry
 
 _path_excel = os.path.join(config_root, entry["template"])
 df = read_template(_path_excel, path_spectra=os.path.join(config_root, entry["path"]))
-df['background'] = df['background'].str.upper() 
+df['background'] = df['background'].str.upper()
 df["source"] = str(entry)
 
 

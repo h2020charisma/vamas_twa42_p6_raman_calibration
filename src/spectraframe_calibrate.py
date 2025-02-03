@@ -2,12 +2,15 @@ from pathlib import Path
 import pandas as pd
 from ramanchada2.protocols.calibration.calibration_model import CalibrationModel
 import ramanchada2.misc.constants as rc2const
+from ramanchada2.misc.utils.ramanshift_to_wavelength import shift_cm_1_to_abs_nm
 import matplotlib.pyplot as plt
 import traceback
 from utils import (find_peaks, plot_si_peak, get_config_units, 
                    load_config, get_config_findkw)
 import os.path
 import numpy as np
+
+
 
 # + tags=["parameters"]
 product = None
@@ -19,10 +22,38 @@ si_tag = None
 pst_tag = None
 apap_tag = None
 fit_neon_peaks = None
+match_mode = None
 # -
 
 
-def main(df):
+def get_calibration_boundaries(model_ne):
+    model = model_ne.model
+    return (model.x.min(), model.x.max())
+
+
+def plot_calibration(model_ne, xmin_nm, xmax_nm, npoints=2000, ax=None):
+    try:
+        model = model_ne.model
+        x_range = np.linspace(xmin_nm, xmax_nm, npoints)
+        predicted_y = model(x_range)
+        diffs = np.diff(predicted_y)
+        is_nonmonotonic = diffs < 0  # True where decreasing     
+        if np.any(is_nonmonotonic):
+            print("******** NONMONOTONIC *******")
+
+        # Plot monotonic and non-monotonic segments
+        for i in range(len(x_range) - 1):
+            color = 'red' if is_nonmonotonic[i] else 'blue'
+            ax.plot(x_range[i:i+2], predicted_y[i:i+2], color=color)
+        # ax.scatter(x_range, predicted_y)
+        ax.set_ylabel("Wavelength/nm")
+        ax.set_xlabel("Wavenumber/nm")
+        ax.grid()
+    except Exception as err:
+        print(err)
+
+
+def main(df, _config, _ne_units):
     # now try calibration 
     df_bkg_substracted = df.loc[df["background"] == "BACKGROUND_SUBTRACTED"]
     print(df_bkg_substracted.shape)
@@ -69,13 +100,13 @@ def main(df):
                 fit_peaks_kw=fit_peaks_kw,
                 should_fit=fit_neon_peaks,
                 name="Neon calibration",
-                match_method="argmin2d",
+                match_method="argmin2d" if match_mode is None else match_mode,
                 interpolator_method="pchip",
                 extrapolate=True
             )
             # now derive_model_curve finds peaks, fits peaks, matches peaks and derives the calibration curve
             # and model_neon.process() could be applied to Si or other spectra
-            print(model_neon1)
+            print(model_neon1.model)
             # calmodel1.plot(ax=ax2)
             model_neon1.model.plot(ax=ax3)
             _success = True 
@@ -101,7 +132,7 @@ def main(df):
                 offset = (max(spe_sil.x)-min(spe_sil.x))/len(spe_sil.x)
                 offset = offset / 4
                 spe_sil_resampled = spe_sil.resample_spline_filter(
-                    (min(spe_sil.x)+offset, max(spe_sil.x)-offset), 
+                    (min(spe_sil.x)+offset, max(spe_sil.x)-offset),
                     int(len(spe_sil.x)*4/3), spline='akima', cumulative=False)
             else:
                 spe_sil_resampled = spe_sil
@@ -111,12 +142,17 @@ def main(df):
             )
             spe_sil_ne_calib.plot(ax=ax, label="Si [Ne calibrated only] len={}".
                                 format(len(spe_sil_ne_calib.x)), fmt='+-')
-            ax.set_xlabel("nm")
+            ax.set_xlabel("Wavelength/nm")
             ax.grid()
-            # ax1.scatter(spe_sil_resampled.x, spe_sil_ne_calib.x)
-            ax1.set_ylabel("nm")
-            ax1.set_xlabel("cm-1")
-            ax1.grid()
+
+            if _ne_units == "nm":
+                xmin_nm = min(spe_neon.x)
+                xmax_nm = max(spe_neon.x)
+            else:
+                xmin_nm = shift_cm_1_to_abs_nm(0, laser_wave_length_nm=laser_wl)
+                xmax_nm = shift_cm_1_to_abs_nm(3500, laser_wave_length_nm=laser_wl)
+            plot_calibration(model_neon1, xmin_nm, xmax_nm, ax=ax1)
+
             calmodel1.prominence_coeff = 3
             # in case there are nans from the calibration curve extrapolation
             spe_sil_ne_calib = spe_sil_ne_calib.dropna()
@@ -181,7 +217,7 @@ def main(df):
             spe_apap_calibrated = calmodel1.apply_calibration_x(spe_apap)
             spe_apap.plot(label=apap_tag, ax=ax_apap)
             spe_apap_calibrated.plot(label=f"calibrated {apap_tag}", 
-                                    ax=ax_apap, linestyle='--')
+                                        ax=ax_apap, linestyle='--')
             ax_apap.grid()
         except Exception as err:
             print(err)
@@ -193,6 +229,6 @@ try:
     df = pd.read_hdf(upstream["spectraframe_*"][f"spectraframe_{key}"]["h5"], key="templates_read")
     _config = load_config(os.path.join(config_root, config_templates))
     _ne_units = get_config_units(_config, key, tag="neon")
-    main(df)
+    main(df, _config, _ne_units)
 except Exception as err:
     print(err)

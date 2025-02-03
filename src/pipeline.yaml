@@ -14,7 +14,7 @@ tasks:
       config_templates: "{{config_templates}}"
       config_root: "{{config_root}}"
     grid:
-      key: ["0101","0401","0402","0601","0701","0801","01001","01201","01202"]
+      key: ["0101","0401","0402","0601","0701","0702","0801","01001","01201","01202"]
 
   - source: spectraframe_calibrate.py
     name: "spectracal_[[key]]"    
@@ -31,14 +31,17 @@ tasks:
       apap_tag: "{{apap_tag}}"
       fit_neon_peaks: "{{fit_ne_peaks}}"   
     grid:
-      key: ["0101","0601","0701","0801","01001","01201","01202"]
+      key: ["0101","0601","0701","0702","0801","01001","01201","01202"]
 
  
   - source: calibration_verify.py
     upstream: ["spectraframe_*","spectracal_*"]
     product: 
-      nb: "{{config_output}}_{{fit_ne_peaks}}/assessment/calibration_verify.ipynb"
+      nb: "{{config_output}}_{{fit_ne_peaks}}/assessment/calibration_verify.html"
     params:
       config_templates: "{{config_templates}}"
       config_root: "{{config_root}}"
+    nbconvert_export_kwargs:
+        # optionally hide the code from the report
+        exclude_input: True            
  

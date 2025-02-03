@@ -7,6 +7,7 @@ from utils import (find_peaks, plot_si_peak, load_config,
                    get_config_findkw, plot_biclustering)
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
+import warnings
 
 
 # + tags=["parameters"]
@@ -16,6 +17,7 @@ config_root: "{{config_root}}"
 # -
 
 _config = load_config(os.path.join(config_root, config_templates))
+warnings.filterwarnings('ignore')
 
 
 def plot_model(calmodel, entry, laser_wl, optical_path, spe_sils=None):
@@ -47,13 +49,15 @@ def average_spe(df, tag):
     spes = df.loc[df["sample"] == tag]["spectrum"].values
     for spe_sil in spes:
         spe_sum = spe_sil if spe_sum is None else spe_sum+spe_sil
+    print(len(spes))
     return spe_sum/len(spes)
 
-def plot_distances(pairwise_distances,identifiers):
+
+def plot_distances(pairwise_distances, identifiers):
     plt.figure(figsize=(8, 6))
     plt.imshow(pairwise_distances, cmap='YlGnBu', interpolation='nearest')
     plt.colorbar(label='Cosine similarity')
-    plt.xticks(ticks=np.arange(len(identifiers)), labels=identifiers,rotation=90)
+    plt.xticks(ticks=np.arange(len(identifiers)), labels=identifiers, rotation=90)
     plt.yticks(ticks=np.arange(len(identifiers)), labels=identifiers)
     plt.title('Cosine Distance Heatmap')
     plt.xlabel('Spectra')
@@ -61,10 +65,8 @@ def plot_distances(pairwise_distances,identifiers):
     plt.show()
 
 
-
 original = {}
 calibrated = {}
-
 for key in upstream["spectracal_*"].keys():
     # print(key)
     entry = key.replace("spectracal_","")
@@ -72,7 +74,6 @@ for key in upstream["spectracal_*"].keys():
     data_file = upstream["spectraframe_*"][key_frame]["h5"]
     spectra_frame = pd.read_hdf(data_file, key="templates_read")
     df_bkg_substracted = spectra_frame.loc[spectra_frame["background"] == "BACKGROUND_SUBTRACTED"]
-
     folder_path = upstream["spectracal_*"][key]["calmodels"]
     pkl_files = [file for file in os.listdir(folder_path) if file.endswith(".pkl")]
     for modelfile in pkl_files:
@@ -92,30 +93,47 @@ for key in upstream["spectracal_*"].keys():
         for tag, axis in axes.items():
             try:
                 boundaries = (200, 3*1024+200)
-                bins = 2048
+                bins = 3*1024
                 strategy = "unity"
+                spline = "cubic_spline"
+                plot_resampled = True
+
                 spe = average_spe(op_data, tag)
                 if tag in ["S0N", "S0B"]:
-                    spe = spe.trim_axes(method='x-axis', boundaries=(520.45-100,520.45 + 100))
+                    spe = spe.trim_axes(method='x-axis', boundaries=(520.45-100, 520.45 + 100))
                 else:
                     spe = spe.trim_axes(method='x-axis', boundaries=boundaries)
-                spe.plot(ax=axis, label=tag)
+                # remove pedestal
+                spe.y = spe.y - np.min(spe.y)
+                # remove baseline
+                spe = spe.subtract_baseline_rc1_snip(niter=40)
                 spe_calibrated = calmodel.apply_calibration_x(spe)
-                spe_calibrated.plot(ax=axis, label=f"{tag} x-calibrated",linestyle='--', linewidth=1)
 
-                spe_resampled = spe.resample_spline_filter(x_range=boundaries, xnew_bins=bins, spline='akima')
-                spe_resampled = spe_resampled.subtract_baseline_rc1_snip(niter= 40).normalize(strategy=strategy)
-                spe_cal_resampled = spe_calibrated.resample_spline_filter(x_range=boundaries, xnew_bins=bins, spline='akima')
-                spe_cal_resampled = spe_cal_resampled.subtract_baseline_rc1_snip(niter= 40).normalize(strategy=strategy)
+                spe_resampled = spe.resample_spline_filter(
+                    x_range=boundaries, xnew_bins=bins, spline=spline)
+                #spe_resampled = spe_resampled.subtract_baseline_rc1_snip(niter=40).normalize(strategy=strategy)
+                spe_resampled = spe_resampled.normalize(strategy=strategy)
 
-                # spe_resampled.plot(ax=axis, label=tag)                
-                # spe_cal_resampled.plot(ax=axis, label=f"{tag} x-calibrated",linestyle='--', linewidth=1)
+                spe_cal_resampled = spe_calibrated.resample_spline_filter(
+                    x_range=boundaries, xnew_bins=bins, spline=spline)
+                #spe_cal_resampled = spe_cal_resampled.subtract_baseline_rc1_snip(niter=40).normalize(strategy=strategy)
+                spe_cal_resampled = spe_cal_resampled.normalize(
+                    strategy=strategy)
+
+                if plot_resampled:
+                    spe_resampled.plot(ax=axis, label=tag)                
+                    spe_cal_resampled.plot(ax=axis, label=f"{tag} x-calibrated", linestyle='--', linewidth=1)
+                else:
+                    spe.plot(ax=axis, label=tag)
+                    spe_calibrated.plot(ax=axis, label=f"{tag} x-calibrated", 
+                                        linestyle='--', linewidth=1)
+
                 if tag not in original:
-                    original[tag] = { "y" : [] , "id" : [] }
+                    original[tag] = {"y": [], "id": []}
                 original[tag]["y"].append(spe_resampled.y)
                 original[tag]["id"].append(_id)
                 if tag not in calibrated:
-                    calibrated[tag] = { "y" : [] , "id" : [] }
+                    calibrated[tag] = {"y": [], "id": []}
                 calibrated[tag]["y"].append(spe_cal_resampled.y)                    
                 calibrated[tag]["id"].append(_id)
             except Exception as err:
@@ -123,15 +141,12 @@ for key in upstream["spectracal_*"].keys():
             axis.grid()
 
 for tag in original:
-    print(tag)
-    
+
     label = ["original", "x-calibrated"]
     y_original = original[tag]["y"]
     y_calibrated = calibrated[tag]["y"]
     id_original = original[tag]["id"]
     id_calibrated = calibrated[tag]["id"]
-    print(tag, id_original)
-    print(id_calibrated)
     ids = [id_original, id_calibrated]
     fig, ax = plt.subplots(2, 2, figsize=(16,8))  
     fig.suptitle(tag)

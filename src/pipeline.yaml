@@ -19,8 +19,8 @@ tasks:
   - source: spectraframe_calibrate.py
     name: "spectracal_[[key]]"    
     product: 
-      nb: "{{config_output}}_{{fit_ne_peaks}}/[[key]]/spectracal.ipynb"
-      calmodels: "{{config_output}}_{{fit_ne_peaks}}/[[key]]/calmodels"
+      nb: "{{config_output}}_{{fit_ne_peaks}}_{{match_mode}}/[[key]]/spectracal.ipynb"
+      calmodels: "{{config_output}}_{{fit_ne_peaks}}_{{match_mode}}/[[key]]/calmodels"
     upstream: "spectraframe_*"      
     params:
       config_templates: "{{config_templates}}"
@@ -29,7 +29,8 @@ tasks:
       si_tag: "{{si_tag}}"
       pst_tag: "{{pst_tag}}"
       apap_tag: "{{apap_tag}}"
-      fit_neon_peaks: "{{fit_ne_peaks}}"   
+      fit_neon_peaks: "{{fit_ne_peaks}}"
+      match_mode: "{{match_mode}}"   
     grid:
       key: ["0101","0601","0701","0702","0801","01001","01201","01202"]
 
@@ -37,10 +38,11 @@ tasks:
   - source: calibration_verify.py
     upstream: ["spectraframe_*","spectracal_*"]
     product: 
-      nb: "{{config_output}}_{{fit_ne_peaks}}/assessment/calibration_verify.html"
+      nb: "{{config_output}}_{{fit_ne_peaks}}_{{match_mode}}/assessment/calibration_verify.html"
     params:
       config_templates: "{{config_templates}}"
       config_root: "{{config_root}}"
+      match_mode: "{{match_mode}}"   
     nbconvert_export_kwargs:
         # optionally hide the code from the report
         exclude_input: True            

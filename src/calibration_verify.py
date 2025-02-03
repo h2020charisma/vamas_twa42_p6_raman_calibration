@@ -12,8 +12,10 @@ import warnings
 
 # + tags=["parameters"]
 product = None
-config_templates: "{{config_templates}}"
-config_root: "{{config_root}}"
+config_templates = None
+config_root = None
+match_mode = None
+interpolator = None
 # -
 
 _config = load_config(os.path.join(config_root, config_templates))
@@ -93,9 +95,11 @@ for key in upstream["spectracal_*"].keys():
         for tag, axis in axes.items():
             try:
                 boundaries = (200, 3*1024+200)
-                bins = 3*1024
-                strategy = "unity"
-                spline = "cubic_spline"
+                boundaries = (400, 800)
+                #bins = 3*1024
+                bins = 400
+                strategy = "L2"
+                spline = "pchip"
                 plot_resampled = True
 
                 spe = average_spe(op_data, tag)

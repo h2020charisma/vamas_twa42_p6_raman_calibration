@@ -14,8 +14,8 @@ import numpy as np
 
 # + tags=["parameters"]
 product = None
-config_templates: "{{config_templates}}"
-config_root: "{{config_root}}"
+config_templates = None
+config_root = None
 key = None
 neon_tag = None
 si_tag = None
@@ -23,6 +23,7 @@ pst_tag = None
 apap_tag = None
 fit_neon_peaks = None
 match_mode = None
+interpolator = None
 # -
 
 
@@ -121,7 +122,7 @@ def main(df, _config, _ne_units):
                 should_fit=fit_neon_peaks,
                 name="Neon calibration",
                 match_method="argmin2d" if match_mode is None else match_mode,
-                interpolator_method="pchip",
+                interpolator_method="pchip" if interpolator is None else interpolator,
                 extrapolate=True
             )
             # now derive_model_curve finds peaks, fits peaks, matches peaks and derives the calibration curve

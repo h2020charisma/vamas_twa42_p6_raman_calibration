@@ -71,7 +71,6 @@ def get_config_excludecols(_config, key):
         ])
 
 def get_config_findkw(_config, key, tag="si"):
-    print(_config.get("templates", {}).get(key, {}).get("find_kw", {}))
     return _config.get("templates", {}).get(key, {}).get("find_kw", {}).get(tag, {"wlen": 200, "width": 1})
 
 

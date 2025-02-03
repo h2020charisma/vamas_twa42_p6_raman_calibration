@@ -73,7 +73,15 @@ def main(df, _config, _ne_units):
         optical_path = group_keys[1]
 
         ax1.set_title(f"{key} {laser_wl}nm {optical_path}")
-        spe_neon = op_data.loc[op_data["sample"] == neon_tag]["spectrum"].iloc[0]
+        
+        # Check if a row with "sample" == "Neon" and "overexposed" == "HDR_MERGE" exists
+        matching_row = op_data.loc[(op_data["sample"] == neon_tag) & (op_data["overexposed"] == "HDR_MERGE")]
+        if not matching_row.empty:
+            print("Using HDR merge")
+            spe_neon = matching_row["spectrum"].iloc[0]
+        else:
+            spe_neon = op_data.loc[op_data["sample"] == neon_tag]["spectrum"].iloc[0]
+
         spe_sil = op_data.loc[op_data["sample"] == si_tag]["spectrum"].iloc[0]
         spe_sil.plot(ax=ax2, label=si_tag)
 

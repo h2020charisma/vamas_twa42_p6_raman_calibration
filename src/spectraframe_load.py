@@ -131,6 +131,7 @@ if new_rows:  # Only concatenate if there are new rows to add
 df.to_hdf(product["h5"], key='templates_read', mode='w')
 df.to_excel(product["xlsx"], sheet_name='templates_read', index=False)    
 
+hdr_added = False
 df_ne = df.loc[(df["background"] == "BACKGROUND_SUBTRACTED") & (df["sample"] == "Neon")]
 grouped_df = df_ne.groupby(["laser_wl", "optical_path"], dropna=False)
 for group_keys, op_data in grouped_df:
@@ -157,8 +158,21 @@ for group_keys, op_data in grouped_df:
         hdr = hdr_from_multi_exposure(spe_ne,
                                     meta_exposure_time='integration_time_ms',
                                     meta_ymax='yaxis_max')
-        hdr.plot(ax=axes[0], fmt='--', label='HDR')
-        hdr.plot(ax=axes[1], fmt='--', label='HDR')
-        max_row["spectrum"].plot(ax=axes[0].twinx(), label=max_row["integration_time_ms"])
-        max_row["spectrum"].plot(ax=axes[1].twinx(), label=max_row["integration_time_ms"])
+        twax = axes[0].twinx()
+        twax.set_yscale("log")
+        max_row["spectrum"].plot(ax=twax, label=max_row["integration_time_ms"])
+        max_row["spectrum"].plot(ax=axes[1].twinx(), label=max_row["integration_time_ms"])        
+        hdr.plot(ax=axes[0], fmt='--', color='red', label='HDR')
+        hdr.plot(ax=axes[1], fmt='--', color='red', label='HDR')
+
+        hdr_row = max_row.copy()
+        hdr_row["spectrum"] = hdr
+        hdr_row["overexposed"] = "HDR_MERGE"
+        df = pd.concat([df, pd.DataFrame([hdr_row])], ignore_index=True)
+        hdr_added = True
         #plt.yscale('log')
+
+if hdr_added:
+    print("HDR merged Ne added")
+    df.to_hdf(product["h5"], key='templates_read', mode='w')
+    df.to_excel(product["xlsx"], sheet_name='templates_read', index=False)           

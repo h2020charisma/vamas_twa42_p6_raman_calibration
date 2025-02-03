@@ -38,16 +38,24 @@ def plot_calibration(model_ne, xmin_nm, xmax_nm, npoints=2000, ax=None):
         predicted_y = model(x_range)
         diffs = np.diff(predicted_y)
         is_nonmonotonic = diffs < 0  # True where decreasing     
+        nonmonotonic_count = np.count_nonzero(is_nonmonotonic)        
         if np.any(is_nonmonotonic):
-            print("******** NONMONOTONIC *******")
+            print(f"*** Number of non-monotonic points: {nonmonotonic_count} ****")
 
         # Plot monotonic and non-monotonic segments
         for i in range(len(x_range) - 1):
-            color = 'red' if is_nonmonotonic[i] else 'blue'
-            ax.plot(x_range[i:i+2], predicted_y[i:i+2], color=color)
+            if is_nonmonotonic[i]:
+                continue
+            ax.plot(x_range[i:i+2], predicted_y[i:i+2], color='blue')
+        if nonmonotonic_count > 0:
+            for i in range(len(x_range) - 1):
+                if is_nonmonotonic[i]:
+                    ax.plot(x_range[i:i+2], predicted_y[i:i+2], color='red')            
         # ax.scatter(x_range, predicted_y)
         ax.set_ylabel("Wavelength/nm")
-        ax.set_xlabel("Wavenumber/nm")
+        ax.set_xlabel("Wavelength/nm")
+        if nonmonotonic_count > 0:
+            ax.set_title(f"Number of non-monotonic points: {nonmonotonic_count} ")
         ax.grid()
     except Exception as err:
         print(err)
@@ -69,7 +77,11 @@ def main(df, _config, _ne_units):
         spe_sil = op_data.loc[op_data["sample"] == si_tag]["spectrum"].iloc[0]
         spe_sil.plot(ax=ax2, label=si_tag)
 
-        spe_sil = spe_sil.trim_axes(method='x-axis', boundaries=(520.45-150, 520.45+150))
+        spe_sil = spe_sil.trim_axes(method='x-axis', boundaries=(520.45-100, 520.45+100))
+        # remove pedestal
+        spe_sil.y = spe_sil.y - np.min(spe_sil.y)
+        spe_sil = spe_sil.subtract_baseline_rc1_snip(niter=40)
+             
         spe_neon.plot(ax=ax1, label=neon_tag)
         ax1.set_xlabel(_ne_units)
         #spe_sil.plot(ax=ax2, label=si_tag)
@@ -149,8 +161,8 @@ def main(df, _config, _ne_units):
                 xmin_nm = min(spe_neon.x)
                 xmax_nm = max(spe_neon.x)
             else:
-                xmin_nm = shift_cm_1_to_abs_nm(0, laser_wave_length_nm=laser_wl)
-                xmax_nm = shift_cm_1_to_abs_nm(3500, laser_wave_length_nm=laser_wl)
+                xmin_nm = shift_cm_1_to_abs_nm(min(spe_neon.x), laser_wave_length_nm=laser_wl)
+                xmax_nm = shift_cm_1_to_abs_nm(max(spe_neon.x), laser_wave_length_nm=laser_wl)
             plot_calibration(model_neon1, xmin_nm, xmax_nm, ax=ax1)
 
             calmodel1.prominence_coeff = 3
@@ -174,7 +186,7 @@ def main(df, _config, _ne_units):
             ax.axvline(x=model_si.model, color='black', linestyle='--', linewidth=2, label="Peak found {:.3f} nm".format(model_si.model))
             print(model_si)
             model_si.fit_res.plot(ax=ax, label="fitres",  linestyle='--')
-            print("fit_res", model_si.fit_res)
+            # print("fit_res", model_si.fit_res)
             print(len(spe_sil_ne_calib.x))
             print("peaks", model_si.peaks)
         except Exception:
@@ -204,6 +216,7 @@ def main(df, _config, _ne_units):
         fig, (ax_pst, ax_apap) = plt.subplots(1, 2, figsize=(15, 3))
         try:
             spe_pst = op_data.loc[op_data["sample"] == pst_tag]["spectrum"].iloc[0]
+            spe_pst.y = spe_pst.y - np.min(spe_pst.y)
             spe_pst_calibrated = calmodel1.apply_calibration_x(spe_pst)
             spe_pst.plot(label=pst_tag, ax=ax_pst)
             spe_pst_calibrated.plot(label=f"calibrated {pst_tag}", ax=ax_pst, 
@@ -214,6 +227,8 @@ def main(df, _config, _ne_units):
 
         try:
             spe_apap = op_data.loc[op_data["sample"] == apap_tag]["spectrum"].iloc[0]
+            # pedestal
+            spe_apap.y = spe_apap.y - np.min(spe_apap.y)
             spe_apap_calibrated = calmodel1.apply_calibration_x(spe_apap)
             spe_apap.plot(label=apap_tag, ax=ax_apap)
             spe_apap_calibrated.plot(label=f"calibrated {apap_tag}", 

@@ -1,4 +1,4 @@
-from ramanchada2.spectrum import Spectrum
+from ramanchada2.spectrum import Spectrum, hdr_from_multi_exposure
 from utils import (
     read_template, load_config, is_in_skip, 
     get_config_excludecols
@@ -131,3 +131,34 @@ if new_rows:  # Only concatenate if there are new rows to add
 df.to_hdf(product["h5"], key='templates_read', mode='w')
 df.to_excel(product["xlsx"], sheet_name='templates_read', index=False)    
 
+df_ne = df.loc[(df["background"] == "BACKGROUND_SUBTRACTED") & (df["sample"] == "Neon")]
+grouped_df = df_ne.groupby(["laser_wl", "optical_path"], dropna=False)
+for group_keys, op_data in grouped_df:
+    if len(op_data) > 1:
+        fig, (axes) = plt.subplots(len(op_data)+2, 1, figsize=(15, 12)) 
+        laser_wl = group_keys[0]
+        optical_path = group_keys[1]
+        axes[0].set_title(f"{key} [{laser_wl}nm] {optical_path}")
+        axes[0].set_yscale("log")
+        max_row = op_data.loc[op_data["integration_time_ms"].idxmax()]
+        yaxis_max = 0.9 * max(max_row["spectrum"].y)
+        spe_ne = []
+        ix = 2
+        for _, row in op_data.iterrows():
+            integration_time_ms = row["integration_time_ms"]
+            spe = Spectrum(row["spectrum"].x, row["spectrum"].y,
+                        metadata=dict(integration_time_ms=integration_time_ms,
+                                        yaxis_max=yaxis_max))
+            spe.plot(ax=axes[ix], fmt='--', label=f"{integration_time_ms} ms")
+            spe_ne.append(spe)
+            #plt.yscale('log')
+            #axes[ix].set_yscale("log")
+            ix = ix+1
+        hdr = hdr_from_multi_exposure(spe_ne,
+                                    meta_exposure_time='integration_time_ms',
+                                    meta_ymax='yaxis_max')
+        hdr.plot(ax=axes[0], fmt='--', label='HDR')
+        hdr.plot(ax=axes[1], fmt='--', label='HDR')
+        max_row["spectrum"].plot(ax=axes[0].twinx(), label=max_row["integration_time_ms"])
+        max_row["spectrum"].plot(ax=axes[1].twinx(), label=max_row["integration_time_ms"])
+        #plt.yscale('log')

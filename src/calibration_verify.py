@@ -14,8 +14,6 @@ import warnings
 product = None
 config_templates = None
 config_root = None
-match_mode = None
-interpolator = None
 # -
 
 _config = load_config(os.path.join(config_root, config_templates))
@@ -72,6 +70,8 @@ calibrated = {}
 for key in upstream["spectracal_*"].keys():
     # print(key)
     entry = key.replace("spectracal_","")
+    if entry == "x01001":
+        continue
     key_frame = key.replace("spectracal","spectraframe")
     data_file = upstream["spectraframe_*"][key_frame]["h5"]
     spectra_frame = pd.read_hdf(data_file, key="templates_read")
@@ -95,9 +95,9 @@ for key in upstream["spectracal_*"].keys():
         for tag, axis in axes.items():
             try:
                 boundaries = (200, 3*1024+200)
-                boundaries = (400, 800)
-                #bins = 3*1024
-                bins = 400
+                #boundaries = (400, 800)
+                bins = 3*1024
+                #bins = 400
                 strategy = "L2"
                 spline = "pchip"
                 plot_resampled = True
@@ -160,6 +160,8 @@ for tag in original:
         cos_sim_values = cos_sim_matrix[upper_tri_indices]
         # Step 3: Plot the distribution
         ax[index, 0].hist(cos_sim_values, bins=10, color='blue', edgecolor='black')
+        ax[index, 0].set_xlim(0, 1)
+        ax[index, 0].grid() 
         plt.title('Distribution of Cosine Similarities ({} spectra)'.format(label[index]))
         plt.xlabel('Cosine Similarity')
         plt.ylabel('Frequency')

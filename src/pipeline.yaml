@@ -43,8 +43,6 @@ tasks:
     params:
       config_templates: "{{config_templates}}"
       config_root: "{{config_root}}"
-      match_mode: "{{match_mode}}"
-      interpolator: "{{interpolator}}"   
     nbconvert_export_kwargs:
         # optionally hide the code from the report
         exclude_input: True            

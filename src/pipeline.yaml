@@ -35,6 +35,16 @@ tasks:
     grid:
       key: ["0101","0601","0701","0702","0801","01001","01201","01202"]
 
+  - source: spectraframe_ycalibrate.py
+    name: "spectracaly_[[key]]"    
+    product: 
+      nb: "{{config_output}}_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/spectracaly.ipynb"
+    upstream: ["spectraframe_*","spectracal_*"]
+    params:
+      config_templates: "{{config_templates}}"
+      config_root: "{{config_root}}"
+    grid:
+      key: ["0101","0601","0701","0702","0801","01001","01201","01202"]
  
   - source: calibration_verify.py
     upstream: ["spectraframe_*","spectracal_*"]

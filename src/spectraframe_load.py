@@ -28,6 +28,10 @@ entry
 _path_excel = os.path.join(config_root, entry["template"])
 df = read_template(_path_excel, path_spectra=os.path.join(config_root, entry["path"]))
 df['background'] = df['background'].str.upper()
+# I have typo in the template and some participants corrected it :) 
+df.loc[df["background"] == "BACKGROUND_SUBSTRACTED", "background"] = "BACKGROUND_SUBTRACTED"
+df.loc[df["background"] == "BACKGROUND_NOT_SUBSTRACTED", "background"] = "BACKGROUND_NOT_SUBTRACTED"
+
 df["source"] = str(entry)
 
 
@@ -175,4 +179,4 @@ for group_keys, op_data in grouped_df:
 if hdr_added:
     print("HDR merged Ne added")
     df.to_hdf(product["h5"], key='templates_read', mode='w')
-    df.to_excel(product["xlsx"], sheet_name='templates_read', index=False)           
+    df.to_excel(product["xlsx"], sheet_name='templates_read', index=False)

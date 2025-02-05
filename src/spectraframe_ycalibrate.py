@@ -14,7 +14,25 @@ config_root = None
 key = None
 # -
 
-#tags = ["LED532_EL0-9001","NIST532_SRM2242a","NIR785_EL0-9002A","NIST785_SRM2241"]
+# tags = ["LED532_EL0-9001","NIST532_SRM2242a","NIR785_EL0-9002A","NIST785_SRM2241"]
+
+
+def create_ycal(spe_srm, xcalmodel=None, cert_srm=None, window_length=0):
+    if cert_srm is None:
+        return None, spe_srm
+    srm = spe_srm.trim_axes(method="x-axis", boundaries=cert_srm.raman_shift)
+    if xcalmodel is not None:
+        srm_calibrated = xcalmodel.apply_calibration_x(srm)
+    else:
+        srm_calibrated = srm
+    if window_length > 0:
+        maxy = max(srm_calibrated.y)
+        srm_calibrated = srm_calibrated.smoothing_RC1(
+            method="savgol", window_length=window_length, polyorder=3)
+        srm_calibrated.y = maxy*srm_calibrated.y/max(srm_calibrated.y)
+    ycal = YCalibrationComponent(cert_srm.wavelength, srm_calibrated, cert_srm)
+    return ycal, srm_calibrated
+
 
 def main(df, _config):
     certificates = CertificatesDict()
@@ -33,9 +51,11 @@ def main(df, _config):
             axes[0].set_title(f"[{key}] {laser_wl}nm {optical_path}")
             certs[cert].plot(ax=axes[0], color='pink')
             srm_spe = matching_row["spectrum"].iloc[0]
-            srm_spe.plot(ax=axes[0].twinx())
-            ycal = YCalibrationComponent(laser_wl, srm_spe, certs[cert])
-                        
+            ycal, srm_calibrated = create_ycal(
+                srm_spe, xcalmodel=None, cert_srm=certs[cert], window_length=40)
+            srm_spe.plot(ax=axes[0].twinx(), label='measured')
+            srm_calibrated.plot(ax=axes[0].twinx(), label='processed',
+                                color='green', fmt='--')
             for index, tag in enumerate(["PST", "APAP"]):
                 axes[index+1].set_title(tag)
                 matching_row = op_data.loc[(op_data["sample"] == tag)]

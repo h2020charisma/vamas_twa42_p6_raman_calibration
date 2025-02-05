@@ -48,13 +48,16 @@ def main(df, _config):
                 continue
             print(cert)
             fig, axes = plt.subplots(1, 3, figsize=(15, 3))
+            for i in [0, 1, 2]:
+                axes[i].grid()
+                axes[i].set_xlabel('Wavenumber/cm⁻¹')
             axes[0].set_title(f"[{key}] {laser_wl}nm {optical_path}")
             certs[cert].plot(ax=axes[0], color='pink')
             srm_spe = matching_row["spectrum"].iloc[0]
             ycal, srm_calibrated = create_ycal(
                 srm_spe, xcalmodel=None, cert_srm=certs[cert], window_length=40)
             srm_spe.plot(ax=axes[0].twinx(), label='measured')
-            srm_calibrated.plot(ax=axes[0].twinx(), label='processed',
+            srm_calibrated.plot(ax=axes[0].twinx(),
                                 color='green', fmt='--')
             for index, tag in enumerate(["PST", "APAP"]):
                 axes[index+1].set_title(tag)
@@ -66,7 +69,7 @@ def main(df, _config):
                 spe_to_correct = spe_to_correct.subtract_baseline_rc1_snip(niter=40)
                 spe_to_correct.plot(ax=axes[index+1],  fmt='--', color = "green", label='baseline')
                 spe_ycalibrated = ycal.process(spe_to_correct)
-                spe_ycalibrated.plot(ax=axes[index+1].twinx(), fmt='--', color='orange', label='ycal')
+                spe_ycalibrated.plot(ax=axes[index+1].twinx(), fmt='--', color='orange', label='y-calibrated')
 
 
 try:

@@ -103,8 +103,8 @@ def plot_si_peak(spe_sil, spe_sil_calibrated, fitres= None, ax=None):
 
     spe_sil.plot(label="Si original", ax=ax1, color='blue')
     spe_sil_calibrated.plot(ax=ax1, label="Si calibrated", color='orange')
-    ax1.set_xlabel('Raman shift (cm⁻¹)')
-    ax1.set_ylabel("Intensity (a.u.)")    
+    ax1.set_xlabel('Wavenumber/cm⁻¹')
+    ax1.set_ylabel("Raman intensity/Arbitr.Units")    
     ax1.set_xlim(520-50,520+50)
     # ax1.set_xlim(300, max(spe_sil.x))
     ax1.axvline(x=520.45, color='red', linestyle='-', linewidth=2, label="Reference 520.45 cm-1")

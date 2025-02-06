@@ -107,6 +107,8 @@ for key in upstream["spectracal_*"].keys():
                     spe = spe.trim_axes(method='x-axis', boundaries=(520.45-100, 520.45 + 100))
                 else:
                     spe = spe.trim_axes(method='x-axis', boundaries=boundaries)
+
+                print(spe.y_noise_MAD())
                 # remove pedestal
                 spe.y = spe.y - np.min(spe.y)
                 # remove baseline
@@ -127,10 +129,12 @@ for key in upstream["spectracal_*"].keys():
                 if plot_resampled:
                     spe_resampled.plot(ax=axis, label=tag)                
                     spe_cal_resampled.plot(ax=axis, label=f"{tag} x-calibrated", linestyle='--', linewidth=1)
+                    axis.set_xlabel('Wavenumber/cm⁻¹')
                 else:
                     spe.plot(ax=axis, label=tag)
                     spe_calibrated.plot(ax=axis, label=f"{tag} x-calibrated", 
                                         linestyle='--', linewidth=1)
+                    axis.set_xlabel('Wavenumber/cm⁻¹')
 
                 if tag not in original:
                     original[tag] = {"y": [], "id": []}
@@ -152,19 +156,22 @@ for tag in original:
     id_original = original[tag]["id"]
     id_calibrated = calibrated[tag]["id"]
     ids = [id_original, id_calibrated]
-    fig, ax = plt.subplots(2, 2, figsize=(16,8))  
+    fig, ax = plt.subplots(2, 2, figsize=(16,12))  
     fig.suptitle(tag)
     for index, y in enumerate([y_original, y_calibrated]):
         cos_sim_matrix = cosine_similarity(y)
         upper_tri_indices = np.triu_indices_from(cos_sim_matrix, k=1)
         cos_sim_values = cos_sim_matrix[upper_tri_indices]
         # Step 3: Plot the distribution
-        ax[index, 0].hist(cos_sim_values, bins=10, color='blue', edgecolor='black')
+        bins = np.linspace(0, 1, num=50)
+        ax[index, 0].hist(cos_sim_values, bins=bins, color='blue', edgecolor='black')
         ax[index, 0].set_xlim(0, 1)
         ax[index, 0].grid() 
-        plt.title('Distribution of Cosine Similarities ({} spectra)'.format(label[index]))
+        ax[index, 0].set_xlabel("Cosine similarity")
+        #plt.title('Distribution of Cosine Similarities ({} spectra)'.format(label[index]))
         plt.xlabel('Cosine Similarity')
         plt.ylabel('Frequency')
-        plot_biclustering(cos_sim_matrix, ids[index], title="Cosine similarity {} spectra".format(label[index]), ax=ax[index, 1])
-        ax[index, 0].set_title("{} [{:.2f}|{:.2f}|{:.2f}]".format("Cosine similarity histogram", np.min(cos_sim_matrix), np.mean(cos_sim_matrix), np.max(cos_sim_matrix)))
+        plot_biclustering(cos_sim_matrix, ids[index], title=label[index], ax=ax[index, 1])
+        ax[index, 0].set_title("{} [min={:.2f}|median={:.2f}|max={:.2f}]".format("Cosine similarity histogram", np.min(cos_sim_matrix), np.median(cos_sim_matrix), np.max(cos_sim_matrix)))
+    fig.tight_layout()        
     plt.show()

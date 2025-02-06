@@ -49,7 +49,7 @@ tasks:
   - source: calibration_verify.py
     upstream: ["spectraframe_*","spectracal_*"]
     product: 
-      nb: "{{config_output}}_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/assessment/calibration_verify.html"
+      nb: "{{config_output}}_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/assessment/calibration_verify.ipynb"
     params:
       config_templates: "{{config_templates}}"
       config_root: "{{config_root}}"

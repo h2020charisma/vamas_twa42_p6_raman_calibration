@@ -98,21 +98,21 @@ def plot_si_peak(spe_sil, spe_sil_calibrated, fitres= None, ax=None):
         df = fitres.to_dataframe_peaks()
         df = df.sort_values(by="height", ascending=False)
         # print("The Si peak of the calibrated spectrum (Pearson4)", df.iloc[0]["position"])
-        ax1.axvline(x=df.iloc[0]["position"], color='black', linestyle=':', linewidth=2, label="Si peak {:.3f} cm-1".format(df.iloc[0]["position"]))
+        ax1.axvline(x=df.iloc[0]["position"], color='black', linestyle=':', linewidth=2, label="Si peak {:.3f} cm⁻¹".format(df.iloc[0]["position"]))
         fitres.plot(ax=ax1.twinx(), label="fit res", color="magenta")
 
     spe_sil.plot(label="Si original", ax=ax1, color='blue')
     spe_sil_calibrated.plot(ax=ax1, label="Si calibrated", color='orange')
     ax1.set_xlabel('Wavenumber/cm⁻¹')
-    ax1.set_ylabel("Raman intensity/Arbitr.Units")    
+    ax1.set_ylabel("") #Raman intensity/Arbitr.Units")    
     ax1.set_xlim(520-50,520+50)
     # ax1.set_xlim(300, max(spe_sil.x))
-    ax1.axvline(x=520.45, color='red', linestyle='-', linewidth=2, label="Reference 520.45 cm-1")
+    ax1.axvline(x=520.45, color='red', linestyle='-', linewidth=2, label="Reference 520.45 cm⁻¹")
     ax1.legend()
     ax1.grid()
 
 
-def plot_biclustering(pairwise_distances, identifiers, title='Cosine similarity Heatmap',ax=None):
+def plot_biclustering(pairwise_distances, identifiers, title='original',ax=None):
     
     # Perform biclustering
     model = SpectralBiclustering(n_clusters=(3, 3), method='log', random_state=0)
@@ -132,8 +132,9 @@ def plot_biclustering(pairwise_distances, identifiers, title='Cosine similarity 
     ax.set_yticklabels(np.array(identifiers)[np.argsort(model.row_labels_)])
     
     # Set title and labels
-    ax.set_title(title)
+    #ax.set_title(title)
+    ax.set_title("")
 
-    ax.set_xlabel('Spectra')
-    ax.set_ylabel('Spectra')
+    ax.set_xlabel(f'{title} spectra')
+    ax.set_ylabel(f'{title} spectra')
     

@@ -123,7 +123,7 @@ for index, row in df_bkg_notsubtracted.iterrows():
 
     new_row["spectrum"] = new_spe
     new_spe.plot(label="Background_Substracted {} ({})".format(row["sample"], 
-                                    row["optical_path"]), ax=ax, linestyle='--')
+                                    row["optical_path"]), ax=ax.twinx(), linestyle='--', color='orange')
     new_row["background"] = "BACKGROUND_SUBTRACTED"
     new_rows.append(new_row)
     #plt.close(fig)

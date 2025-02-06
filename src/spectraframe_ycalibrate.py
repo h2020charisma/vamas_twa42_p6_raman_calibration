@@ -14,8 +14,6 @@ config_root = None
 key = None
 # -
 
-# tags = ["LED532_EL0-9001","NIST532_SRM2242a","NIR785_EL0-9002A","NIST785_SRM2241"]
-
 
 def create_ycal(spe_srm, xcalmodel=None, cert_srm=None, window_length=0):
     if cert_srm is None:

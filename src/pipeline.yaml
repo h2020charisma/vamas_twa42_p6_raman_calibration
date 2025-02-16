@@ -35,6 +35,15 @@ tasks:
     grid:
       key: ["0101","0601","0701","0702","0801","01001","01201","01202"]
 
+
+  - source: spectraframe_tips.py
+    upstream: ["spectraframe_*"]
+    name: "spectra_tips"   
+    product: 
+      nb: "{{config_output}}/spectraframe_tips.ipynb" 
+ 
+
+
   - source: spectraframe_ycalibrate.py
     name: "spectracaly_[[key]]"    
     product: 

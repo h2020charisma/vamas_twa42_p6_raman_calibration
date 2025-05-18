@@ -1,0 +1,40 @@
+[tool.poetry]
+name = "rama-rdv"
+version = "0.1.0"
+description = "Rama Rendez-Vous: ploomber pipelines for Raman processing"
+authors = ["Nina Jeliazkova <jeliazkova.nina@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.13"
+ploomber = "^0.23.2"
+jupyter = "^1.0.0"
+torch = "^2.2.2"
+h5py = "^3.10.0"
+h5pyd = "^0.18.0"
+fuzzywuzzy = "^0.18.0"
+dtaidistance = "^2.3.11"
+denoising-diffusion-pytorch = "^1.11.0"
+nexusformat = "^1.0.4"
+numpy = "^1.26.4"
+orpl = "^22313"
+requests = "^2.31.0"
+scipy = "^1.11.4"
+scikit-learn = "^1.4.1.post1"
+ramanchada2 = {path = "../ramanchada2", develop = true}
+pyambit = {path = "../pyambit", develop = true}
+pynanomapper = {path = "../pynanomapper", develop = true}
+tables = "^3.9.2"
+emd = "^0.7.0"
+hnswlib = "^0.8.0"
+dependency-injector = "^4.41.0"
+python-keycloak = "^4.2.2"
+numcompress = "^0.1.2"
+fastdtw = "^0.3.4"
+openpyxl = "^3.1.5"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

@@ -2,7 +2,7 @@
 
 This repository contains a [Ploomber](https://ploomber.io/)-based analysis pipeline for [VAMAS TWA 42 Project 6](https://www.vamas.org/twa42/documents/2024_vamas_twa42_p6_raman_calibration.pdf).
 
-[Home](README.md) | [Tasks](README_pipeline.md) | [Configuration Files](README_config.md) 
+[Home](README.md) | [Input Files](README_input.md) | [Configuration Files](README_config.md) 
 
 ## 🔄 Pipeline Overview
 
@@ -16,7 +16,7 @@ This Ploomber pipeline has four main steps:
 
 - Applies spectral calibration (using Neon and Silicon peaks) and interpolates to a standard axis.
 
-### ycalibrate (spectraframe_ycalibrate.py) (optional)
+### ycalibrate (spectraframe_ycalibrate.py)
 
 - Performs intensity calibration or correction (e.g., laser power normalization).
 

@@ -21,6 +21,7 @@ LICENSE
 README.md
 ```
 
+> Background on [Ploomber pipeline.yaml](README_ploomber.md##-pipeline.yaml).
 
 ---
 
@@ -28,7 +29,7 @@ README.md
 
 This project uses [Poetry](https://python-poetry.org/) to manage dependencies. To install:
 
-```bash
+```sh
 git clone https://github.com/h2020charisma/vamas_twa42_p6_raman_calibration.git
 cd vamas_twa42_p6_raman_calibration
 poetry install
@@ -38,9 +39,9 @@ poetry install
 
 ### Step 1: Set up configuration
 
-Create or modify env.yaml with:
+Create or modify `env.yaml` with:
 
-```
+```json
 config_templates: "config_pipeline.json"
 config_root: "path/to/your/data"
 config_output: "path/to/output"
@@ -62,17 +63,19 @@ interpolator: "pchip"
 
 ### Step 2: Run pipeline
 
-```
+```sh
 poetry run ploomber build
 ```
 
 To run a specific task:
 
-```
-poetry run ploomber task spectraframe_calibrate
+```sh
+poetry run ploomber task spectraframe_0101 
 ```
 
 Outputs will be saved under the directory specified in `config_output`.
+
+> Background on [Ploomber pipeline.yaml](README_ploomber.md##-pipeline.yaml) on task names, grid parameters and configuraiton keys.
 
 ## 🔄 Pipeline Overview
 
@@ -98,6 +101,4 @@ Protocols for Raman instrument calibration and harmonisation of Raman data
 ## Acknowledgements
 
  This project has received funding from the European Union’s Horizon 2020 research and innovation program under grant agreement No. 952921.
- 
-This work is part of the CHARISMA project and aligned with the VAMAS international metrology initiative.
 

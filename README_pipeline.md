@@ -14,104 +14,48 @@ In [Ploomber](https://ploomber.io/), the [pipeline.yaml](src/pipeline.yaml) file
 
 This [pipeline.yaml](src/pipeline.yaml) has four main steps:
 
-### load (spectraframe_load.py)
-
-- Parses metadata, loads all spectra using ramanchada2, and tags them based on configuration.
-
-### calibrate (spectraframe_calibrate.py)
-
-- Applies spectral calibration (using Neon peaks) and laser zeroing using Si peak
-
-### ycalibrate (spectraframe_ycalibrate.py)
-
-- Performs relative intensity calibration.
-
-### verify (calibration_verify.py)
+### ⚙️ spectraframe_* (spectraframe_load.py)
 
 
+Parses metadata, loads all spectra using ramanchada2, and tags them based on configuration.
 
-## 🔄 Pipeline grid parameters
+- Input: Raw spectral files (e.g. .txt, .spa, etc.) and a metadata template per dataset.
+- Configuration: Controlled by the "templates" entries in the config_pipeline.json, indexed by key (e.g., "0101").
+- Output (product):
+    - .ipynb: Processing notebook.
+    - .xlsx: Structured metadata + derived information.
+    - .h5: Similar to .xlsx, but the spectrum column is a ramanchada2 Spectrum object
+- Grid: Runs this task separately for each dataset key (see [configuration file](README_config.md)).
 
-### 🔑 Role of key in the Pipeline
 
-In the [pipeline.yaml](src/pipeline.yaml), the key values defined in the *grid* section of each task correspond directly to dataset identifiers found in the [config_pipeline.json](README_config.md) file. These keys (e.g., `0101`, `0401`, etc.) are used to parameterize and parallelize the pipeline over multiple datasets. Here's how this works:
+### ⚙️ spectracal_* (spectraframe_calibrate.py)
 
-Each key represents a unique dataset entry defined in the JSON configuration (config_pipeline.json). These entries include:
+Applies wavenumber calibration (using Neon peaks) and laser zeroing using Si peak as in [CWA18133](https://static1.squarespace.com/static/5fabfc06f012f739139f5df2/t/66ebcf55aa76f94840f51f97/1726730081110/cwa18133-1.pdf).
 
-- A metadata template (Excel file),
-- A path to raw data (e.g., .txt, .csv, .spa files),
-- Optional notes, unit conventions, columns to exclude, and preprocessing settings.
+- Input: Results from spectraframe_[[key]].
+- Upstream: Depends on all `spectraframe_*` tasks.
+- Parameters: Includes peak fitting modes (fit_ne_peaks), matching strategies, and interpolation method.
+- Output:
+    - .ipynb: Notebook showing calibration results.
+    - calmodels: Folder with fitted calibration models.
+- Grid: Runs this task separately for each dataset key (see [configuration file](README_config.md)).
 
-```json
-"0601": {
-    "template": "...",
-    "path": "...",
-    "notes": "Spectra in .spa are in pixels...",
-    "exclude_cols": [...],
-    "preprocess": {
-        "trim_axes": {
-            "method": "x-axis",
-            "boundaries": [100, 3400]
-        }
-    }
-}
-```
 
-### 🧪 How It Works in the Pipeline
+### ⚙️ spectracaly_* (spectraframe_ycalibrate.py)
 
-In each task with a grid definition, Ploomber dynamically generates parameterized tasks — one per key. These tasks run independently but are linked by dependencies defined via upstream.
+⚠️ **Under development**: Not yet used by `calibration_verify`
 
-Example:
+Performs relative intensity calibration as in [CWA18133](https://static1.squarespace.com/static/5fabfc06f012f739139f5df2/t/66ebcf55aa76f94840f51f97/1726730081110/cwa18133-1.pdf).
 
-```yaml
-  - source: spectraframe_load.py
-    name: "spectraframe_[[key]]"
-....
-    grid:
-      key: ["0101", "0601", "0701"]
-```
+- Input: Needs both raw load (spectraframe_[[key]]) and wavelength-calibrated (spectracal_[[key]]) data.
+- Output: Notebook showing normalized spectra.
+- Grid: Same subset of dataset keys as calibration step.
 
-Ploomber expands this into: `spectraframe_0101`, `spectraframe_0601`, `spectraframe_0701`
+### ⚙️ calibration_verify (calibration_verify.py)
 
-These tasks then access their respective dataset info from the [configuration json](README_config.md), using the key as a lookup.
+Purpose: Final QC and validation of calibration steps.
 
-```json
-{
-    "version": "2",
-    "templates": {
-        "0101": {
-            "template": ...,
-....
-        },
-        "0601": {
-            "template": ...,
-....
-        },
-        "0701": {
-            "template": ...,
-....
-        },   
-    }
-}             
-```
+- Input: All spectraframe_* and spectracal_* results.
+- Output: One .ipynb with summary statistics, plots, and pass/fail diagnostics.
 
-### 📦 Product Paths
-
-Each task's product (e.g., notebook output, HDF5, Excel) uses the [[key]] placeholder to generate dataset-specific file paths. For example:
-
-```yaml
-product: 
-  nb: "{{config_output}}/[[key]]/spectraframe_load.ipynb"
-```
-
-If key = "0601", the output becomes: ```<config_output>/0601/spectraframe_load.ipynb```
-
-## 🔁 Summary
-
-| Key Usage       | Description                                                 |
-| --------------- | ----------------------------------------------------------- |
-| `grid.key`      | Defines which datasets (by key) to run the task on          |
-| `[[key]]`       | Used in task `name` and `product` to generate unique names  |
-| Config lookup   | Scripts access dataset-specific settings via `key`          |
-| Param injection | Enables running the same script with dataset-specific logic |
-| DAG formation   | Ensures correct dependency chaining and reusability         |
+⏎ Aggregates results to visually and quantitatively check calibration performance across labs.

@@ -30,7 +30,92 @@ Why pipeline.yaml is important
 
 In short, [pipeline.yaml](src/pipeline.yaml) is like the blueprint or workflow recipe that tells Ploomber what to run, when, with what inputs, and what to produce.
 
-[More details](README_pipeline.md)
+### 🔄 Pipeline grid parameters
+
+#### 🔑 Role of key in the Pipeline
+
+In the [pipeline.yaml](src/pipeline.yaml), the key values defined in the *grid* section of each task correspond directly to dataset identifiers found in the [config_pipeline.json](README_config.md) file. These keys (e.g., `0101`, `0401`, etc.) are used to parameterize and parallelize the pipeline over multiple datasets. Here's how this works:
+
+Each key represents a unique dataset entry defined in the JSON configuration (config_pipeline.json). These entries include:
+
+- A metadata template (Excel file),
+- A path to raw data (e.g., .txt, .csv, .spa files),
+- Optional notes, unit conventions, columns to exclude, and preprocessing settings.
+
+```json
+"0601": {
+    "template": "...",
+    "path": "...",
+    "notes": "Spectra in .spa are in pixels...",
+    "exclude_cols": [...],
+    "preprocess": {
+        "trim_axes": {
+            "method": "x-axis",
+            "boundaries": [100, 3400]
+        }
+    }
+}
+```
+
+#### 🧪 How It Works in the Pipeline
+
+In each task with a grid definition, Ploomber dynamically generates parameterized tasks — one per key. These tasks run independently but are linked by dependencies defined via upstream.
+
+Example:
+
+```yaml
+  - source: spectraframe_load.py
+    name: "spectraframe_[[key]]"
+....
+    grid:
+      key: ["0101", "0601", "0701"]
+```
+
+Ploomber expands this into: `spectraframe_0101`, `spectraframe_0601`, `spectraframe_0701`
+
+These tasks then access their respective dataset info from the [configuration json](README_config.md), using the key as a lookup.
+
+```json
+{
+    "version": "2",
+    "templates": {
+        "0101": {
+            "template": ...,
+....
+        },
+        "0601": {
+            "template": ...,
+....
+        },
+        "0701": {
+            "template": ...,
+....
+        },   
+    }
+}             
+```
+
+### 📦 Product Paths
+
+Each task's product (e.g., notebook output, HDF5, Excel) uses the [[key]] placeholder to generate dataset-specific file paths. For example:
+
+```yaml
+product: 
+  nb: "{{config_output}}/[[key]]/spectraframe_load.ipynb"
+```
+
+If key = "0601", the output becomes: ```<config_output>/0601/spectraframe_load.ipynb```
+
+### 🔁 Summary
+
+| Key Usage       | Description                                                 |
+| --------------- | ----------------------------------------------------------- |
+| `grid.key`      | Defines which datasets (by key) to run the task on          |
+| `[[key]]`       | Used in task `name` and `product` to generate unique names  |
+| Config lookup   | Scripts access dataset-specific settings via `key`          |
+| Param injection | Enables running the same script with dataset-specific logic |
+| DAG formation   | Ensures correct dependency chaining and reusability         |
+
 
 ### Execution order and dependency graph
 
@@ -45,7 +130,7 @@ These products serve two purposes:
 - They store the results of the task.
 - They act as cache indicators. If the products already exist and are up to date, Ploomber can skip re-running that task, saving time.
 
-```
+```yaml
 tasks:
 
   - source: spectraframe_load.py
@@ -70,7 +155,7 @@ For example, calibration tasks use parameters like `fit_neon_peaks` or `match_mo
 
 Parameters are often passed from configuration files [env.yaml](src/env_example.yaml) or templates, making the pipeline flexible and easy to adapt without changing code.
 
-```
+```yaml
     params:
       config_templates: "{{config_templates}}"
       config_root: "{{config_root}}"
@@ -83,7 +168,7 @@ Parameters are often passed from configuration files [env.yaml](src/env_example.
 
 The grid is a way to run the same task multiple times with different parameter sets or on different data subsets. Here, the key in the grid is a list of dataset identifiers (e.g., "0101", "0701"). For each key, Ploomber will create a separate task instance and corresponding products. This allows batch processing of multiple spectra sets in parallel or sequence.
 
-```
+```yaml
     grid:
       key: ["0101","0401","0402","0601","0701","0702","0801","01001","01201","01202"]
 ```
@@ -98,7 +183,7 @@ Tasks declare dependencies on other tasks via the upstream field. This forms a d
 
 Ploomber uses this `dependency graph` to decide what to run, ensuring tasks run in the correct order and only rerun if inputs or upstream results have changed.
 
-```
+```yaml
   - source: spectraframe_calibrate.py
     name: "spectracal_[[key]]"    
     upstream: "spectraframe_*"    

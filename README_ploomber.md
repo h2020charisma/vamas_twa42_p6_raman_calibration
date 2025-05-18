@@ -1,7 +1,5 @@
 # How Ploomber manages the pipeline execution
 
-This repository contains a [Ploomber](https://ploomber.io/)-based analysis pipeline for [VAMAS TWA 42 Project 6](https://www.vamas.org/twa42/documents/2024_vamas_twa42_p6_raman_calibration.pdf).
-
 [Home](README.md) | [Tasks](README_pipeline.md) | [Input Files](README_input.md) | [Configuration Files](README_config.md) 
 
 This project uses [Ploomber](https://ploomber.io/), a Python-based pipeline tool, to organize and automate the steps for  [VAMAS TWA 42 Project 6](https://www.vamas.org/twa42/documents/2024_vamas_twa42_p6_raman_calibration.pdf) data analysis. The pipeline is made up of multiple tasks, each corresponding to a specific Python script that performs a step in the workflow (e.g., loading data, calibration, verification).
@@ -11,8 +9,10 @@ This project uses [Ploomber](https://ploomber.io/), a Python-based pipeline tool
 In [Ploomber](https://ploomber.io/), the [pipeline.yaml](src/pipeline.yaml) file is the central configuration file that defines the entire data pipeline. It describes what tasks make up the pipeline, how they are connected, what inputs they take, what outputs they produce, and any parameters or settings each task requires.
 
 What pipeline.yaml contains:
-- Metadata : This section can include general pipeline-level options, such as whether to automatically extract upstream dependencies from the code.
-- Tasks: The core of the file is the list of tasks. For each task, pipeline.yaml specifies:
+- `Metadata` : This section can include general pipeline-level options, such as whether to automatically extract upstream dependencies from the code.
+- `Tasks`: The core of the file is the list of tasks. 
+
+For each task, pipeline.yaml specifies:
 
 - `source`: The script or notebook that contains the code to run the task.
 - `name`: A unique name for the task; often parameterized to run multiple instances (e.g., "spectraframe_[[key]]").
@@ -20,6 +20,17 @@ What pipeline.yaml contains:
 - `product`: The outputs the task creates, often files or notebooks that act as both results and cache markers.
 - `params`: Parameters passed to the task for configuration or customization.
 - `grid`: A list of parameter sets for batch execution, letting you run the task multiple times with different inputs or keys.
+
+Why pipeline.yaml is important
+
+- It serves as a single source of truth for the entire pipeline setup.
+- It makes the pipeline modular and reproducible—you can easily track, modify, and extend steps.
+- It enables Ploomber to handle incremental execution by checking if outputs exist and if dependencies have changed.
+- It supports parameterization and batching via grids, so you can scale your analyses efficiently.
+
+In short, [pipeline.yaml](src/pipeline.yaml) is like the blueprint or workflow recipe that tells Ploomber what to run, when, with what inputs, and what to produce.
+
+[More details](README_pipeline.md)
 
 ### Execution order and dependency graph
 
@@ -70,7 +81,7 @@ Parameters are often passed from configuration files [env.yaml](src/env_example.
 
 ## Grid
 
-The grid is a way to run the same task multiple times with different parameter sets or on different data subsets. Here, the key in the grid is a list of sample identifiers (e.g., "0101", "0701"). For each key, Ploomber will create a separate task instance and corresponding products. This allows batch processing of multiple spectra sets in parallel or sequence.
+The grid is a way to run the same task multiple times with different parameter sets or on different data subsets. Here, the key in the grid is a list of dataset identifiers (e.g., "0101", "0701"). For each key, Ploomber will create a separate task instance and corresponding products. This allows batch processing of multiple spectra sets in parallel or sequence.
 
 ```
     grid:
@@ -105,4 +116,5 @@ This incremental execution optimizes computation, so only tasks affected by chan
 In summary, 
 - Ploomber uses task definitions with input scripts, output products, parameters, and dependencies to build a graph of steps.
 - It then intelligently executes tasks based on this graph and whether their results are up to date, enabling efficient, reproducible pipeline runs. 
-- The grid feature allows you to batch process multiple samples or parameter sets cleanly within the same pipeline definition.
+- The grid feature allows you to batch process multiple datasets or parameter sets cleanly within the same pipeline definition.
+

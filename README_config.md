@@ -2,7 +2,7 @@
 
 This repository contains a [Ploomber](https://ploomber.io/)-based analysis pipeline for [VAMAS TWA 42 Project 6](https://www.vamas.org/twa42/documents/2024_vamas_twa42_p6_raman_calibration.pdf).
 
-[Back](../README.md) 
+[Home](README.md) | [Tasks](README_pipeline.md) | [Input Files](README_input.md) 
 
 ## ⚙️ Configuration Files
 

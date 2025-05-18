@@ -1,7 +1,9 @@
 # VAMAS Project 06 – Raman Calibration Data Analysis Pipeline
 
 This repository contains a [Ploomber](https://ploomber.io/)-based analysis pipeline for [VAMAS TWA 42 Project 6](https://www.vamas.org/twa42/documents/2024_vamas_twa42_p6_raman_calibration.pdf).
-It implements [CWA18133 Raman instruments calibration and verification protocols](https://static1.squarespace.com/static/5fabfc06f012f739139f5df2/t/66ebcf55aa76f94840f51f97/1726730081110/cwa18133-1.pdf) using open source [ramanchada2](https://pypi.org/project/ramanchada2/) library [doi:10.1002/jrs.6789](https://doi.org/10.1002/jrs.6789).
+
+- implementation of [CWA18133 Raman instruments calibration and verification protocols](https://static1.squarespace.com/static/5fabfc06f012f739139f5df2/t/66ebcf55aa76f94840f51f97/1726730081110/cwa18133-1.pdf) 
+- using open source [ramanchada2](https://pypi.org/project/ramanchada2/) library [[doi:10.1002/jrs.6789](https://doi.org/10.1002/jrs.6789)].
 
 ---
 
@@ -72,66 +74,12 @@ poetry run ploomber task spectraframe_calibrate
 
 Outputs will be saved under the directory specified in `config_output`.
 
-## 📥 Input Files
-
-### Metadata Template
-
-Each dataset is accompanied by an Excel metadata template. The expected format [Template Wizard](https://enanomapper.adma.ai/projects/enanomapper/datatemplates/pchem/index.html?template=CHARISMA_RR)  with a key sheet:
-
-#### `Files sheet`: Lists all spectrum files with metadata.
-
-- Column A: Sample (used for material identification via *_tag)
-- Other fields: Acquisition metadata (e.g., OP, power, humidity)
-
-### Spectral Files
-Accepted formats: Any format supported by [ramanchada2](https://h2020charisma.github.io/ramanchada2/ramanchada2/spectrum/creators/from_local_file.html#from_local_file), including spc, sp, spa, 0, 1, 2, wdf, ngs, jdx, dx, txt, txtr, tsv, csv, dpt, prn, rruf, spe
-
-Spectra should be listed in the metadata file with matching file names
-
-Units (e.g., nm, cm⁻¹, or pixels) are inferred per dataset from the config_pipeline.json file. Default is cm⁻¹.
-
-## ⚙️ Configuration Files
-
-### env.yaml
-
-Defines global runtime parameters:
-
-- Paths: `config_templates`, `config_root`, `config_output`
-- Sample categorization tags: `ne_tag`, `pst_tag`, `ti_tags`, etc.
-- Matching: `match_mode` = `cluster` or `argmin2d`
-- Interpolation: `interpolator` = `pchip`
-- Execution flags: `fit_ne_peaks` = `True ` enables Neon peak detection (slower)
-
-These are injected into `pipeline.yaml` using [Ploomber](https://ploomber.io/)’s Jinja-style templating.
-
-### config_pipeline.json
-
-Maps datasets to: Metadata template file and data directory
-
-- Notes for interpretation (e.g., missing files, unit anomalies)
-- Excluded metadata columns (e.g., laser_power_percent, background)
-- Preprocessing actions (e.g., axis trimming)
-- Optional calibration tweaks (e.g., windowing for peak-finding)
-
 ## 🔄 Pipeline Overview
 
-This Ploomber pipeline has four main steps:
+- [Tasks](README_pipeline.md)
+- [Configuration Files](README_config.md)
+- [Input Files](README_input.md)
 
-### load (spectraframe_load.py)
-
-- Parses metadata, loads all spectra using ramanchada2, and tags them based on configuration.
-
-### calibrate (spectraframe_calibrate.py)
-
-- Applies spectral calibration (using Neon and Silicon peaks) and interpolates to a standard axis.
-
-### ycalibrate (spectraframe_ycalibrate.py) (optional)
-
-- Performs intensity calibration or correction (e.g., laser power normalization).
-
-### verify (calibration_verify.py)
-
-- Generates QC plots and summary statistics to validate calibration results.
 
 ## 🤝 Contributing
 

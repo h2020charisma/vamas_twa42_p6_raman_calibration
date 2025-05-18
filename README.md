@@ -12,10 +12,10 @@ This repository contains a [Ploomber](https://ploomber.io/)-based analysis pipel
 ```
 src/
 ├── pipeline.yaml # Defines the Ploomber workflow
-├── spectraframe_load.py # Loads raw spectra into memory
-├── spectraframe_calibrate.py # Applies spectral axis calibration
-├── spectraframe_ycalibrate.py # (Optional) intensity calibration
-├── calibration_verify.py # Generates verification outputs
+├── spectraframe_load.py # Parses metadata and spectra files, substracts background and stores data in dataframe
+├── spectraframe_calibrate.py # Wavenumber calibration
+├── spectraframe_ycalibrate.py # Relative intensity calibration
+├── calibration_verify.py # Generates summary outputs
 pyproject.toml
 LICENSE
 README.md

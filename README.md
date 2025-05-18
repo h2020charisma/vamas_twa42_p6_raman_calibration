@@ -77,6 +77,14 @@ Outputs will be saved under the directory specified in `config_output`.
 
 > Background on [Ploomber pipeline.yaml](README_ploomber.md##-pipeline.yaml) on task names, grid parameters and configuraiton keys.
 
+To verify task structure and dependencies without executing:
+
+```sh
+ploomber status        # Show task status
+ploomber dag           # Visualize task graph
+ploomber build --dry-run  # Show what would run
+```
+
 ## 🔄 Pipeline Overview
 
 - [Tasks](README_pipeline.md)

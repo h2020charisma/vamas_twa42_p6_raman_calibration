@@ -13,3 +13,11 @@
 
 
 - check 0801 and 01001 APAP 
+
+- unit tests 
+
+
+
+def test_pipeline_runs():
+    import subprocess
+    result = subprocess.run(["ploomber", "build"], check=True)

@@ -139,6 +139,8 @@ df.to_excel(product["xlsx"], sheet_name='templates_read', index=False)
 hdr_added = False
 df_ne = df.loc[(df["background"] == "BACKGROUND_SUBTRACTED") & (df["sample"] == "Neon")]
 grouped_df = df_ne.groupby(["laser_wl", "optical_path"], dropna=False)
+
+# HDR merge on all groups that have integraiton time - not only Ne 
 for group_keys, op_data in grouped_df:
     if 'integration_time_ms' not in op_data.columns or op_data['integration_time_ms'].dropna().empty:
         # Skip this group if integration_time_ms is missing or empty
@@ -153,6 +155,9 @@ for group_keys, op_data in grouped_df:
         yaxis_max = 0.9 * max(max_row["spectrum"].y)
         spe_ne = []
         ix = 2
+        spe_ne_len = []
+        min_x = None
+        max_x = None
         for _, row in op_data.iterrows():
             integration_time_ms = row["integration_time_ms"]
             spe = Spectrum(row["spectrum"].x, row["spectrum"].y,
@@ -160,9 +165,19 @@ for group_keys, op_data in grouped_df:
                                         yaxis_max=yaxis_max))
             spe.plot(ax=axes[ix], fmt='--', label=f"{integration_time_ms} ms")
             spe_ne.append(spe)
+            spe_ne_len.append(len(spe.x))
+            min_x = min(spe.x) if min_x is None or min_x > min(spe.x) else min_x
+            max_x = max(spe.x) if max_x is None or max_x < min(spe.x) else max_x
             #plt.yscale('log')
             #axes[ix].set_yscale("log")
             ix = ix+1
+        if min(spe_ne_len) != max(spe_ne_len):
+            # resample - check if this can be improved
+            for i, _spe in enumerate(spe_ne):
+                spe_ne[i] = _spe.resample_spline_filter(
+                    x_range=(min_x, max_x),
+                    xnew_bins=max(spe_ne_len), spline="akima")
+
         hdr = hdr_from_multi_exposure(spe_ne,
                                     meta_exposure_time='integration_time_ms',
                                     meta_ymax='yaxis_max')

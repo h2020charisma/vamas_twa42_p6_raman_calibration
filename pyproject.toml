@@ -1,4 +1,5 @@
 [tool.poetry]
+package-mode = false
 name = "vamas_twa42_p6_raman_calibration"
 version = "0.1.0"
 description = "Data analysis for VAMAS Project 06 Protocols for Raman instrument calibration and harmonisation of Raman data"

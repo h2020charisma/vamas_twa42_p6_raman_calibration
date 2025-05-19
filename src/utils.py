@@ -36,7 +36,7 @@ def read_template(_path_excel, path_spectra=""):
     else:
         df.columns = _FILES_SHEET_COLUMNS + df.columns[len(_FILES_SHEET_COLUMNS):].tolist()
         # Rename only the first few columns
-
+    df['file_name'] = df['file_name'].str.strip()
     df['file_name'] = df['file_name'].apply(lambda f: os.path.join(path_spectra,f))
 
     df_meta = pd.read_excel(_path_excel, sheet_name=FRONT_SHEET_NAME, skiprows=4)
@@ -50,6 +50,7 @@ def read_template(_path_excel, path_spectra=""):
         investigation = xls.parse(FRONT_SHEET_NAME, usecols="H", nrows=1, header=None).iloc[0, 0]
     df_merged["provider"] = provider
     df_merged["investigation"] = investigation
+    
     return df_merged
 
 

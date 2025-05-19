@@ -10,7 +10,7 @@ This repository contains a [Ploomber](https://ploomber.io/)-based analysis pipel
 
 In [Ploomber](https://ploomber.io/), the [pipeline.yaml](src/pipeline.yaml) file is the central configuration file that defines the entire data pipeline. It describes what tasks make up the pipeline, how they are connected, what inputs they take, what outputs they produce, and any parameters or settings each task requires. 
 
-> Background on [pipeline.yaml](README_ploomber.md##-pipeline.yaml).
+> Background on [pipeline.yaml](README_ploomber.md#pipelineyaml).
 
 This [pipeline.yaml](src/pipeline.yaml) has four main steps:
 

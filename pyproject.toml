@@ -1,7 +1,7 @@
 [tool.poetry]
-name = "rama-rdv"
+name = "vamas_twa42_p6_raman_calibration"
 version = "0.1.0"
-description = "Rama Rendez-Vous: ploomber pipelines for Raman processing"
+description = "Data analysis for VAMAS Project 06 Protocols for Raman instrument calibration and harmonisation of Raman data"
 authors = ["Nina Jeliazkova <jeliazkova.nina@gmail.com>"]
 license = "MIT"
 readme = "README.md"
@@ -22,9 +22,9 @@ orpl = "^22313"
 requests = "^2.31.0"
 scipy = "^1.11.4"
 scikit-learn = "^1.4.1.post1"
-ramanchada2 = {path = "../ramanchada2", develop = true}
-pyambit = {path = "../pyambit", develop = true}
-pynanomapper = {path = "../pynanomapper", develop = true}
+ramanchada2 = "^1.3.0"
+pyambit = "^0.0.1"
+pynanomapper = "^2.0.1"
 tables = "^3.9.2"
 emd = "^0.7.0"
 hnswlib = "^0.8.0"

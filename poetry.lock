@@ -1921,18 +1921,6 @@ files = [
 all = ["flake8 (>=7.1.1)", "mypy (>=1.11.2)", "pytest (>=8.3.2)", "ruff (>=0.6.2)"]
 
 [[package]]
-name = "iniconfig"
-version = "2.1.0"
-description = "brain-dead simple config-ini parsing"
-optional = false
-python-versions = ">=3.8"
-groups = ["main"]
-files = [
-    {file = "iniconfig-2.1.0-py3-none-any.whl", hash = "sha256:9deba5723312380e77435581c6bf4935c94cbfab9b1ed33ef8d238ea168eb760"},
-    {file = "iniconfig-2.1.0.tar.gz", hash = "sha256:3abbd2e30b36733fee78f9c7f7308f2d0050e88f0087fd25c2645f63c773e1c7"},
-]
-
-[[package]]
 name = "ipdb"
 version = "0.13.13"
 description = "IPython-enabled pdb"
@@ -1945,8 +1933,8 @@ files = [
 ]
 
 [package.dependencies]
-decorator = {version = "*", markers = "python_version > \"3.6\""}
-ipython = {version = ">=7.31.1", markers = "python_version > \"3.6\""}
+decorator = {version = "*", markers = "python_version > \"3.6\" and python_version < \"3.11\""}
+ipython = {version = ">=7.31.1", markers = "python_version > \"3.6\" and python_version < \"3.11\""}
 tomli = {version = "*", markers = "python_version > \"3.6\" and python_version < \"3.11\""}
 
 [[package]]
@@ -4294,22 +4282,6 @@ jinja2 = "*"
 dev = ["flake8", "importlib-resources ; python_version < \"3.7\"", "invoke", "ipython", "jedi (==0.17.2)", "nox", "pkgmt", "ploomber", "pytest", "twine", "wheel", "yapf"]
 
 [[package]]
-name = "pluggy"
-version = "1.6.0"
-description = "plugin and hook calling mechanisms for python"
-optional = false
-python-versions = ">=3.9"
-groups = ["main"]
-files = [
-    {file = "pluggy-1.6.0-py3-none-any.whl", hash = "sha256:e920276dd6813095e9377c0bc5566d94c932c33b27a3e3945d8389c374dd4746"},
-    {file = "pluggy-1.6.0.tar.gz", hash = "sha256:7dcc130b76258d33b90f61b658791dede3486c3e6bfb003ee5c9bfb396dd22f3"},
-]
-
-[package.extras]
-dev = ["pre-commit", "tox"]
-testing = ["coverage", "pytest", "pytest-benchmark"]
-
-[[package]]
 name = "posthog"
 version = "4.0.1"
 description = "Integrate PostHog into any python application."
@@ -4542,20 +4514,17 @@ name = "pyambit"
 version = "0.0.1"
 description = "Python implementation of AMBIT data model"
 optional = false
-python-versions = ">=3.10,<3.14"
+python-versions = "<3.13,>=3.9"
 groups = ["main"]
-files = []
-develop = true
+files = [
+    {file = "pyambit-0.0.1-py3-none-any.whl", hash = "sha256:7d47f91a67399204a034a1abd7094f0c0d7b4b4aa7a129e1f8c77a1ebcf73674"},
+    {file = "pyambit-0.0.1.tar.gz", hash = "sha256:fbd8c0409c23e258fb227888f5f371f8a42f751043fe167d4667a85ee97568b5"},
+]
 
 [package.dependencies]
-nexusformat = "^1.0.6"
-pandas = "^2.2.2"
-pydantic = "^2.0"
-pytest = "^8.3.4"
-
-[package.source]
-type = "directory"
-url = "../pyambit"
+nexusformat = ">=1.0.6,<2.0.0"
+pandas = ">=2.2.2,<3.0.0"
+pydantic = ">=2.0,<3.0"
 
 [[package]]
 name = "pycodestyle"
@@ -4765,25 +4734,23 @@ name = "pynanomapper"
 version = "2.0.1"
 description = "eNanoMapper API client"
 optional = false
-python-versions = ">=3.9,<3.13"
+python-versions = "<3.13,>=3.9"
 groups = ["main"]
-files = []
-develop = true
+files = [
+    {file = "pynanomapper-2.0.1-py3-none-any.whl", hash = "sha256:08602f1d6691210334133f9a4293155419f6e5d4bbb6fcacf48cd18fff729a51"},
+    {file = "pynanomapper-2.0.1.tar.gz", hash = "sha256:7fc0b22a2149a0614bb333261e308a9ea1c5f0ca984b61a523887dae023ebff5"},
+]
 
 [package.dependencies]
-jproperties = "^2.1.1"
-measurement = "^3.2.2"
-nexusformat = "^1.0.2"
-openpyxl = "^3.1.2"
-pandas = "^2.0.3"
-pyambit = "^0.0.1"
+jproperties = ">=2.1.1,<3.0.0"
+measurement = ">=3.2.2,<4.0.0"
+nexusformat = ">=1.0.2,<2.0.0"
+openpyxl = ">=3.1.2,<4.0.0"
+pandas = ">=2.0.3,<3.0.0"
+pyambit = ">=0.0.1,<0.0.2"
 pyyaml = ">=5.1"
-requests = "^2.31.0"
-xlsxwriter = "^3.1.9"
-
-[package.source]
-type = "directory"
-url = "../pynanomapper"
+requests = ">=2.31.0,<3.0.0"
+xlsxwriter = ">=3.1.9,<4.0.0"
 
 [[package]]
 name = "pyparsing"
@@ -4799,29 +4766,6 @@ files = [
 
 [package.extras]
 diagrams = ["jinja2", "railroad-diagrams"]
-
-[[package]]
-name = "pytest"
-version = "8.3.5"
-description = "pytest: simple powerful testing with Python"
-optional = false
-python-versions = ">=3.8"
-groups = ["main"]
-files = [
-    {file = "pytest-8.3.5-py3-none-any.whl", hash = "sha256:c69214aa47deac29fad6c2a4f590b9c4a9fdb16a403176fe154b79c0b4d4d820"},
-    {file = "pytest-8.3.5.tar.gz", hash = "sha256:f4efe70cc14e511565ac476b57c279e12a855b11f48f212af1080ef2263d3845"},
-]
-
-[package.dependencies]
-colorama = {version = "*", markers = "sys_platform == \"win32\""}
-exceptiongroup = {version = ">=1.0.0rc8", markers = "python_version < \"3.11\""}
-iniconfig = "*"
-packaging = "*"
-pluggy = ">=1.5,<2"
-tomli = {version = ">=1", markers = "python_version < \"3.11\""}
-
-[package.extras]
-dev = ["argcomplete", "attrs (>=19.2)", "hypothesis (>=3.56)", "mock", "pygments (>=2.7.2)", "requests", "setuptools", "xmlschema"]
 
 [[package]]
 name = "python-dateutil"
@@ -5126,10 +5070,12 @@ name = "ramanchada2"
 version = "1.3.0"
 description = "Harmonising Raman Spectroscopy"
 optional = false
-python-versions = ">=3.9,<3.14"
+python-versions = "<3.14,>=3.9"
 groups = ["main"]
-files = []
-develop = true
+files = [
+    {file = "ramanchada2-1.3.0-py3-none-any.whl", hash = "sha256:064797b30e5c7c8e1b67483792f454e9471134aa086a06c247b4c277f09302ab"},
+    {file = "ramanchada2-1.3.0.tar.gz", hash = "sha256:fd38dbda803b828a6ec1746d4858504db812c45ea5959f3ca4e39c958e414c2c"},
+]
 
 [package.dependencies]
 brukeropusreader = "==1.*"
@@ -5147,10 +5093,6 @@ spc-io = ">=0.2.0,<0.3.0"
 spe2py = ">=2.0,<3.0"
 statsmodels = "==0.14.*"
 uncertainties = "==3.*"
-
-[package.source]
-type = "directory"
-url = "../ramanchada2"
 
 [[package]]
 name = "referencing"
@@ -6595,4 +6537,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.13"
-content-hash = "dc36f1dbd175816d60e77c1d9bffc67cc29d2573f91f68cf3f88ddf0c0b41a22"
+content-hash = "c979fe354bfc609c6e70bf2d5f57764c5adc09829e709e8076072417f22fcf89"

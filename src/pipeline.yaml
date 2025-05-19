@@ -62,6 +62,12 @@ tasks:
     params:
       config_templates: "{{config_templates}}"
       config_root: "{{config_root}}"
+      apap_tag: "{{apap_tag}}"
+      test_tags: "{{test_tags}}"
+      neon_tag: "{{ne_tag}}"
+      si_tag: "{{si_tag}}"
+      pst_tag: "{{pst_tag}}"
+      calcite_tag: "{{calcite_tag}}"         
     nbconvert_export_kwargs:
         # optionally hide the code from the report
         exclude_input: True            

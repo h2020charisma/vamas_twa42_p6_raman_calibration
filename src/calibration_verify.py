@@ -8,12 +8,19 @@ from utils import (find_peaks, plot_si_peak, load_config,
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 import warnings
+import traceback
 
 
 # + tags=["parameters"]
 product = None
 config_templates = None
 config_root = None
+apap_tag = None
+test_tags = None
+neon_tag = None
+si_tag = None
+pst_tag = None
+calcite_tag = None
 # -
 
 _config = load_config(os.path.join(config_root, config_templates))
@@ -47,9 +54,18 @@ def plot_model(calmodel, entry, laser_wl, optical_path, spe_sils=None):
 def average_spe(df, tag):
     spe_sum = None
     spes = df.loc[df["sample"] == tag]["spectrum"].values
-    for spe_sil in spes:
-        spe_sum = spe_sil if spe_sum is None else spe_sum+spe_sil
-    print(len(spes))
+    if len(spes) == 0:
+        return None
+    elif len(spes == 1):
+        return spes[0]
+    for spe in spes:
+        if spe_sum is None:
+            spe_sum = spe
+        else:
+            spe_resampled = spe.resample_spline_filter(
+                    x_range=(min(spe_sum.x), max(spe_sum.x)),
+                    xnew_bins=len(spe_sum.x), spline="akima")
+            spe_sum = spe_sum + spe_resampled
     return spe_sum/len(spes)
 
 
@@ -87,11 +103,13 @@ for key in upstream["spectracal_*"].keys():
         spe_sum = None
         spe_sil = average_spe(op_data, "S0B").trim_axes(method='x-axis', 
                                                         boundaries=(520.45-50, 520.45+50))
+        if spe_sil is None:
+            continue
         plot_model(calmodel, entry, laser_wl, optical_path, [spe_sil])
         fig, (ax, ax1, ax2, ax3) = plt.subplots(1, 4, figsize=(15, 3))
         _id = f"[{entry}] {laser_wl}nm {optical_path}"
         fig.suptitle(_id)
-        axes = {"PST": ax, "APAP": ax1, "CAL": ax2 , "S0N" : ax3, "S0B" : ax3}
+        axes = {pst_tag: ax, apap_tag: ax1, calcite_tag: ax2 , "S0N" : ax3, "S0B" : ax3}
         for tag, axis in axes.items():
             try:
                 boundaries = (200, 3*1024+200)
@@ -103,6 +121,8 @@ for key in upstream["spectracal_*"].keys():
                 plot_resampled = True
 
                 spe = average_spe(op_data, tag)
+                if spe is None:
+                    continue
                 if tag in ["S0N", "S0B"]:
                     spe = spe.trim_axes(method='x-axis', boundaries=(520.45-100, 520.45 + 100))
                 else:
@@ -145,7 +165,7 @@ for key in upstream["spectracal_*"].keys():
                 calibrated[tag]["y"].append(spe_cal_resampled.y)                    
                 calibrated[tag]["id"].append(_id)
             except Exception as err:
-                print(err)
+                traceback.print_exc()
             axis.grid()
 
 for tag in original:

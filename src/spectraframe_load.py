@@ -27,6 +27,7 @@ entry
 
 _path_excel = os.path.join(config_root, entry["template"])
 df = read_template(_path_excel, path_spectra=os.path.join(config_root, entry["path"]))
+
 df['background'] = df['background'].str.upper()
 # I have typo in the template and some participants corrected it :) 
 df.loc[df["background"] == "BACKGROUND_SUBSTRACTED", "background"] = "BACKGROUND_SUBTRACTED"
@@ -139,6 +140,9 @@ hdr_added = False
 df_ne = df.loc[(df["background"] == "BACKGROUND_SUBTRACTED") & (df["sample"] == "Neon")]
 grouped_df = df_ne.groupby(["laser_wl", "optical_path"], dropna=False)
 for group_keys, op_data in grouped_df:
+    if 'integration_time_ms' not in op_data.columns or op_data['integration_time_ms'].dropna().empty:
+        # Skip this group if integration_time_ms is missing or empty
+        continue
     if len(op_data) > 1:
         fig, (axes) = plt.subplots(len(op_data)+2, 1, figsize=(15, 12)) 
         laser_wl = group_keys[0]

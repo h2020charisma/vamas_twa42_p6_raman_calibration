@@ -28,12 +28,12 @@ tasks:
       neon_tag: "{{ne_tag}}"
       si_tag: "{{si_tag}}"
       pst_tag: "{{pst_tag}}"
-      apap_tag: "{{apap_tag}}"
+      apap_tag: "{{validation_tag}}"
       fit_neon_peaks: "{{fit_ne_peaks}}"
       match_mode: "{{match_mode}}"
       interpolator: "{{interpolator}}"   
     grid:
-      key: "{{calibration_key}}"
+      key: "{{dataset_key}}"
 
 
   - source: spectraframe_tips.py
@@ -53,8 +53,7 @@ tasks:
       config_templates: "{{config_templates}}"
       config_root: "{{config_root}}"
     grid:
-      key: "{{calibration_key}}"
-      
+      key: "{{dataset_key}}"
  
   - source: calibration_verify.py
     upstream: ["spectraframe_*","spectracal_*"]
@@ -63,12 +62,11 @@ tasks:
     params:
       config_templates: "{{config_templates}}"
       config_root: "{{config_root}}"
-      validation_tag: "{{apap_tag}}"
-      test_tags: "S0N"
-      neon_tag: "{{ne_tag}}"
+      validation_tag: "{{validation_tag}}"
+      test_tags: "{{test_tags}}"
       si_tag: "{{si_tag}}"
       pst_tag: "{{pst_tag}}"
-      calcite_tag: "{{calcite_tag}}"         
+      calcite_tag: "{{calcite_tag}}"    
     nbconvert_export_kwargs:
         # optionally hide the code from the report
         exclude_input: True            

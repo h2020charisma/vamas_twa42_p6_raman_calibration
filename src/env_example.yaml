@@ -6,3 +6,26 @@ config_output :  "CHANGEIT\\Nextcloud\\Projects\\CHARISMA\\Data Raman RR1\\outpu
 
 # set false for quick run and testing the workflow
 fit_ne_peaks : False
+
+dataset_key:
+  - 0101
+  - 0401
+  - 0402
+  - 0601
+  - 0701
+  - 0702
+  - 0801
+  - 01001
+  - 01201    
+  - 01202
+
+
+calibration_key:
+  - 0101
+  - 0601
+  - 0701
+  - 0702
+  - 0801
+  - 01001
+  - 01201    
+  - 01202

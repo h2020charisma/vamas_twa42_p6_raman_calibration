@@ -36,14 +36,6 @@ tasks:
       key: "{{dataset_key}}"
 
 
-  - source: spectraframe_tips.py
-    upstream: ["spectraframe_*"]
-    name: "spectra_tips"   
-    product: 
-      nb: "{{config_output}}/spectraframe_tips.ipynb" 
- 
-
-
   - source: spectraframe_ycalibrate.py
     name: "spectracaly_[[key]]"    
     product: 

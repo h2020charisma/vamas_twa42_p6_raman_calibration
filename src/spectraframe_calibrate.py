@@ -65,7 +65,7 @@ def plot_calibration(model_ne, xmin_nm, xmax_nm, npoints=2000, ax=None):
 def main(df, _config, _ne_units):
     # now try calibration 
     df_bkg_substracted = df.loc[df["background"] == "BACKGROUND_SUBTRACTED"]
-    print(df_bkg_substracted.shape)
+    #print(df_bkg_substracted.shape)
     grouped_df = df_bkg_substracted.groupby(["laser_wl", "optical_path"], dropna=False)
     for group_keys, op_data in grouped_df:
         _success = False

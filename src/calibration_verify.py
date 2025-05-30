@@ -131,7 +131,7 @@ for key in upstream["spectracal_*"].keys():
                 else:
                     spe = spe.trim_axes(method='x-axis', boundaries=boundaries)
 
-                print(spe.y_noise_MAD())
+                #print(spe.y_noise_MAD())
                 # remove pedestal
                 spe.y = spe.y - np.min(spe.y)
                 # remove baseline
@@ -171,10 +171,16 @@ for key in upstream["spectracal_*"].keys():
                 traceback.print_exc()
             axis.grid()
 
+print(upstream["spectracal_*"].keys())
+
 for tag in original:
 
     label = ["original", "x-calibrated"]
-    y_original = original[tag]["y"]
+    id_calibrated = calibrated[tag]["id"]
+    if len(id_calibrated) <= 1:
+        print(f"{tag}: At least 2 optical paths needed to compare calibration results, found {len(id_calibrated)}: {id_calibrated}" )
+        continue
+    y_original = original[tag]["y"]    
     y_calibrated = calibrated[tag]["y"]
     id_original = original[tag]["id"]
     id_calibrated = calibrated[tag]["id"]
@@ -196,8 +202,11 @@ for tag in original:
             #plt.title('Distribution of Cosine Similarities ({} spectra)'.format(label[index]))
             plt.xlabel('Cosine Similarity')
             plt.ylabel('Frequency')
-            plot_biclustering(cos_sim_matrix, ids[index],
-                              title=label[index], ax=ax[index, 1])
+            try:
+                plot_biclustering(cos_sim_matrix, ids[index],
+                                title=label[index], ax=ax[index, 1])
+            except:
+                pass
             ax[index, 0].set_title(
                 "{} [min={:.2f}|median={:.2f}|max={:.2f}]".format(
                     "Cosine similarity histogram", np.min(cos_sim_matrix),

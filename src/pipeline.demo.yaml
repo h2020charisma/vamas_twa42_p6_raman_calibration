@@ -1,0 +1,65 @@
+meta:
+    extract_upstream: False
+
+tasks:
+
+  - source: spectraframe_load.py
+    name: "spectraframe_[[key]]"
+    upstream: []
+    product: 
+      nb: "{{config_output}}/[[key]]/spectraframe_load.ipynb"
+      h5: "{{config_output}}/[[key]]/spectraframe_load.h5"
+      xlsx: "{{config_output}}/[[key]]/spectraframe_load.xlsx"
+    params:
+      config_templates: "{{config_templates}}"
+      config_root: "{{config_root}}"
+    grid:
+      key: "{{dataset_key}}"
+
+  - source: spectraframe_calibrate.py
+    name: "spectracal_[[key]]"    
+    product: 
+      nb: "{{config_output}}_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/spectracal.ipynb"
+      calmodels: "{{config_output}}_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/calmodels"
+    upstream: "spectraframe_*"      
+    params:
+      config_templates: "{{config_templates}}"
+      config_root: "{{config_root}}"
+      neon_tag: "{{ne_tag}}"
+      si_tag: "{{si_tag}}"
+      pst_tag: "{{pst_tag}}"
+      apap_tag: "{{validation_tag}}"
+      fit_neon_peaks: "{{fit_ne_peaks}}"
+      match_mode: "{{match_mode}}"
+      interpolator: "{{interpolator}}"   
+    grid:
+      key: "{{dataset_key}}"
+
+
+  - source: spectraframe_ycalibrate.py
+    name: "spectracaly_[[key]]"    
+    product: 
+      nb: "{{config_output}}_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/spectracaly.ipynb"
+    upstream: ["spectraframe_*","spectracal_*"]
+    params:
+      config_templates: "{{config_templates}}"
+      config_root: "{{config_root}}"
+    grid:
+      key: "{{dataset_key}}"
+ 
+  - source: calibration_verify.py
+    upstream: ["spectraframe_*","spectracal_*"]
+    product: 
+      nb: "{{config_output}}_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/assessment/calibration_verify.ipynb"
+    params:
+      config_templates: "{{config_templates}}"
+      config_root: "{{config_root}}"
+      validation_tag: "{{validation_tag}}"
+      test_tags: "{{test_tags}}"
+      si_tag: "{{si_tag}}"
+      pst_tag: "{{pst_tag}}"
+      calcite_tag: "{{calcite_tag}}"    
+    nbconvert_export_kwargs:
+        # optionally hide the code from the report
+        exclude_input: True            
+ 

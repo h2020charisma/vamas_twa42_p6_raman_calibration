@@ -1,0 +1,20 @@
+{
+	"templates": {
+		"CSIC_ICV": {
+			"template": "Peak Fitting Data Reporting-CSIC-ICV.xlsx",
+			"path": "./",	
+            "preprocess" : {
+                "trim_axes" : {
+                    "method": "x-axis",
+                    "boundaries": [100, 3400]
+                  }
+            },
+            "units" : {
+                "neon" : "cm-1"
+            },              
+            "find_kw" : {
+                "si" :  {"wlen": 10, "width": 1} 
+            }            
+		}
+	}
+}

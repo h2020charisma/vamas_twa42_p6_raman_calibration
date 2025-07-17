@@ -7,7 +7,7 @@ tasks:
     name: "spectraframe_[[key]]"
     upstream: []
     product: 
-      nb: "{{config_output}}/[[key]]/spectraframe_load.ipynb"
+      nb: "{{config_output}}/[[key]]/spectraframe_load.{{nb_suffix}}"
       h5: "{{config_output}}/[[key]]/spectraframe_load.h5"
       xlsx: "{{config_output}}/[[key]]/spectraframe_load.xlsx"
     params:
@@ -19,7 +19,7 @@ tasks:
   - source: spectraframe_calibrate.py
     name: "spectracal_[[key]]"    
     product: 
-      nb: "{{config_output}}_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/spectracal.ipynb"
+      nb: "{{config_output}}_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/spectracal.{{nb_suffix}}"
       calmodels: "{{config_output}}_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/calmodels"
     upstream: "spectraframe_*"      
     params:
@@ -39,7 +39,7 @@ tasks:
   - source: spectraframe_ycalibrate.py
     name: "spectracaly_[[key]]"    
     product: 
-      nb: "{{config_output}}_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/spectracaly.ipynb"
+      nb: "{{config_output}}_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/spectracaly.{{nb_suffix}}"
     upstream: ["spectraframe_*","spectracal_*"]
     params:
       config_templates: "{{config_templates}}"
@@ -50,7 +50,7 @@ tasks:
   - source: calibration_verify.py
     upstream: ["spectraframe_*","spectracal_*"]
     product: 
-      nb: "{{config_output}}_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/assessment/calibration_verify.ipynb"
+      nb: "{{config_output}}_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/assessment/calibration_verify.{{nb_suffix}}"
     params:
       config_templates: "{{config_templates}}"
       config_root: "{{config_root}}"

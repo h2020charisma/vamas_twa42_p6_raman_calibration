@@ -26,7 +26,7 @@ entry = _config["templates"][key]
 entry
 
 _path_excel = os.path.join(config_root, entry["template"])
-df = read_template(_path_excel, path_spectra=os.path.join(config_root, entry["path"]))
+df = read_template(_path_excel, path_spectra=os.path.join(config_root, entry["path"]), subfolders=entry.get("subfolders", {}))
 
 df['background'] = df['background'].str.upper()
 # I have typo in the template and some participants corrected it :) 

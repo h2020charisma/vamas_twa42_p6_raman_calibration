@@ -23,7 +23,16 @@ def load_spectrum_df(row):
     print(row["file_name"])
     return Spectrum.from_local_file(row["file_name"])
 
-def read_template(_path_excel, path_spectra=""):
+
+def build_path(row, base_path, subfolders={}):
+    subfolder = subfolders.get("optical_paths", {}).get(row["optical_path"], None)
+    if subfolder is None:
+        return os.path.join(base_path, row['file_name'])
+    else:
+        return os.path.join(base_path, subfolder, row['file_name'])
+
+
+def read_template(_path_excel, path_spectra="", subfolders={}):
     FRONT_SHEET_NAME = "Front sheet"
     FILES_SHEET_NAME = "Files sheet"
 
@@ -37,7 +46,11 @@ def read_template(_path_excel, path_spectra=""):
         df.columns = _FILES_SHEET_COLUMNS + df.columns[len(_FILES_SHEET_COLUMNS):].tolist()
         # Rename only the first few columns
     df['file_name'] = df['file_name'].str.strip()
-    df['file_name'] = df['file_name'].apply(lambda f: os.path.join(path_spectra,f))
+    #df['file_name'] = df['file_name'].apply(lambda f: os.path.join(path_spectra,f))
+    df['file_name'] = df.apply(
+        lambda row: build_path(row, path_spectra, subfolders),
+        axis=1
+    )
 
     df_meta = pd.read_excel(_path_excel, sheet_name=FRONT_SHEET_NAME, skiprows=4)
     print("meta", df_meta.columns)

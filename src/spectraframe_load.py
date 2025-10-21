@@ -33,6 +33,8 @@ df['background'] = df['background'].str.upper()
 df.loc[df["background"] == "BACKGROUND_SUBSTRACTED", "background"] = "BACKGROUND_SUBTRACTED"
 df.loc[df["background"] == "BACKGROUND_NOT_SUBSTRACTED", "background"] = "BACKGROUND_NOT_SUBTRACTED"
 
+df['sample'] = df['sample'].str.replace('_bkg', '')
+
 df["source"] = str(entry)
 
 # we are not parsing pictures

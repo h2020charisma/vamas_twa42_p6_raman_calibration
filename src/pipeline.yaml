@@ -3,9 +3,22 @@ meta:
 
 tasks:
 
+  - source: overview.py
+    name: "overview"
+    upstream: []
+    product: 
+      nb: "{{config_output}}/overview.html"
+    params:
+      config_templates: "{{config_templates}}"
+      config_root: "{{config_root}}"
+      keys: "{{dataset_key}}"
+    nbconvert_export_kwargs:
+        # optionally hide the code from the report
+        exclude_input: True    
+
   - source: spectraframe_load.py
     name: "spectraframe_[[key]]"
-    upstream: []
+    upstream: ["overview"]
     product: 
       nb: "{{config_output}}/[[key]]/spectraframe_load.ipynb"
       h5: "{{config_output}}/[[key]]/spectraframe_load.h5"

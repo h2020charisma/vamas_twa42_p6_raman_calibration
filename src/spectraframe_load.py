@@ -35,6 +35,8 @@ df.loc[df["background"] == "BACKGROUND_NOT_SUBSTRACTED", "background"] = "BACKGR
 
 df["source"] = str(entry)
 
+# we are not parsing pictures
+df = df[~df['file_name'].str.lower().str.endswith('.jpg')]
 
 # this likely will need to be configurable
 exclude_cols = get_config_excludecols(_config, key)
@@ -54,15 +56,23 @@ grouped_df = df.groupby(groupby_cols, dropna=False)
 
 # figure out background files
 for group_keys, sample_data in grouped_df:
-    print(sample_data.shape, group_keys)
+    print(sample_data.shape, group_keys)    
+    try:
+        _spe = sample_data.apply(lambda row: Spectrum.from_local_file(row["file_name"]) if os.path.isfile(row["file_name"]) else None, axis=1)
+    except Exception as err:
+        print(err)
+        continue
     fig, ax = plt.subplots(1, 1, figsize=(15, 3))
     ax.title.set_text("{} {}".format(group_keys[0], group_keys[1]))
-    _spe = sample_data.apply(lambda row: Spectrum.from_local_file(row["file_name"]) if os.path.isfile(row["file_name"]) else None, axis=1)
+
     # .trim_axes(method='x-axis', boundaries=(100, 3400))
     sample_data["spectrum"] = _spe
     try:
         sample_data.apply(lambda row: None if row["spectrum"] is None else row["spectrum"].plot(
-            ax=ax, label="{} {} ({})".format(os.path.basename(row["file_name"]), row["background"], row["overexposed"])),
+            ax=ax, label="{} {} {}".format(
+                os.path.basename(row["file_name"]), 
+                row["background"],
+                "" if row["overexposed"] == "NO" else "overexp")),
             axis=1)
     except Exception as err:
         print(err)

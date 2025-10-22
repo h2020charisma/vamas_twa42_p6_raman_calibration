@@ -115,9 +115,9 @@ for key in upstream["spectracal_*"].keys():
                 axes[_tag] = ax3
         for tag, axis in axes.items():
             try:
-                #boundaries = (200, 3*1024+200)
-                boundaries = (300, 300+1024)
-                bins = 1024
+                boundaries = (300, 3*1024+300)
+                #boundaries = (300, 300+1024)
+                bins = 1024 *3
                 #bins = 400
                 strategy = "minmax"
                 spline = "pchip"
@@ -135,7 +135,7 @@ for key in upstream["spectracal_*"].keys():
                 # remove pedestal
                 spe.y = spe.y - np.min(spe.y)
                 # remove baseline
-                #spe = spe.subtract_baseline_rc1_snip(niter=40)
+                spe = spe.subtract_baseline_rc1_snip(niter=40)
                 spe_calibrated = calmodel.apply_calibration_x(spe)
 
                 spe_resampled = spe.resample_spline_filter(

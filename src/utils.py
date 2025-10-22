@@ -244,3 +244,122 @@ def unicode_unit(unit):
 
 def get_xunit(sample, config):
     return config.get("units", {}).get(sample.lower(), "cm-1")
+
+
+def get_boundaries(sample, config):
+    return config.get("preprocess", {}).get("trim_axes", {}).get("boundaries", [100,3500])
+
+
+def plot_spectra_heatmaps1(y_original, y_calibrated, wavelength, ids, tag):
+    """
+    Plot original and calibrated spectra as heatmaps.
+    
+    Parameters
+    ----------
+    y_original : ndarray [n_spectra × n_wavelengths]
+    y_calibrated : ndarray [n_spectra × n_wavelengths]
+    wavelength : ndarray [n_wavelengths]
+    ids : list of spectrum identifiers
+    tag : str
+    """
+    n_spectra = y_original.shape[0]
+
+    # Normalize intensities for better color scaling
+    vmin = min(y_original.min(), y_calibrated.min())
+    vmax = max(y_original.max(), y_calibrated.max())
+
+    fig, axes = plt.subplots(2, 1, figsize=(12, 6), sharex=True, sharey=True)
+    plt.subplots_adjust(hspace=0.1)
+
+    # --- Original spectra heatmap ---
+    im0 = axes[0].imshow(
+        y_original, 
+        aspect='auto',
+        interpolation='nearest',
+        extent=[wavelength.min(), wavelength.max(), 0, n_spectra],
+        origin='lower',
+        vmin=vmin, vmax=vmax,
+        cmap='viridis'
+    )
+    axes[0].set_title("Original spectra")
+    axes[0].set_ylabel("Spectrum ID")
+
+    # Label each spectrum
+    for i, sid in enumerate(ids):
+        axes[0].text(wavelength.min(), i + 0.5, f"{sid}", va='center', ha='right', fontsize=8)
+
+    # --- Calibrated spectra heatmap ---
+    im1 = axes[1].imshow(
+        y_calibrated, 
+        aspect='auto',
+        interpolation='nearest',
+        extent=[wavelength.min(), wavelength.max(), 0, n_spectra],
+        origin='lower',
+        vmin=vmin, vmax=vmax,
+        cmap='viridis'
+    )
+    axes[1].set_title("Calibrated spectra")
+    axes[1].set_xlabel("Wavelength (nm)")
+    axes[1].set_ylabel("Spectrum ID")
+
+    for i, sid in enumerate(ids):
+        axes[1].text(wavelength.min(), i + 0.5, f"{sid}", va='center', ha='right', fontsize=8)
+
+    # --- Colorbar ---
+    cbar = fig.colorbar(im1, ax=axes, orientation='vertical', fraction=0.02, pad=0.02)
+    cbar.set_label("Intensity (a.u.)")
+
+    fig.suptitle(f"{tag}: Spectra Heatmaps (Original vs Calibrated)", fontsize=14)
+    fig.tight_layout(rect=[0, 0, 1, 0.95])
+    plt.show()
+
+
+def plot_spectra_heatmaps(y_original, y_calibrated, wavelength, ids, tag):
+    n_spectra = y_original.shape[0]
+    vmin = min(y_original.min(), y_calibrated.min())
+    vmax = max(y_original.max(), y_calibrated.max())
+
+    # Make figure taller for readability
+    fig, axes = plt.subplots(2, 1, figsize=(12, max(4, n_spectra * 0.4)), sharex=True, sharey=True)
+    plt.subplots_adjust(hspace=0.15)
+
+    # --- Shorten long IDs ---
+    short_ids = [id_.replace(" ", "").split("_")[0] for id_ in ids]  # keep concise prefix
+    if len(short_ids) > 20:  # if too many spectra
+        step = max(1, len(short_ids)//15)
+        yticks = np.arange(0.5, n_spectra, step)
+        yticklabels = [short_ids[i] for i in range(0, n_spectra, step)]
+    else:
+        yticks = np.arange(0.5, n_spectra)
+        yticklabels = short_ids
+
+    # --- Original spectra heatmap ---
+    im0 = axes[0].imshow(
+        y_original, aspect='auto', origin='lower',
+        extent=[wavelength.min(), wavelength.max(), 0, n_spectra],
+        vmin=vmin, vmax=vmax, cmap='viridis'
+    )
+    axes[0].set_title("Original spectra")
+    axes[0].set_ylabel("Spectrum ID")
+    axes[0].set_yticks(yticks)
+    axes[0].set_yticklabels(yticklabels, fontsize=8)
+
+    # --- Calibrated spectra heatmap ---
+    im1 = axes[1].imshow(
+        y_calibrated, aspect='auto', origin='lower',
+        extent=[wavelength.min(), wavelength.max(), 0, n_spectra],
+        vmin=vmin, vmax=vmax, cmap='viridis'
+    )
+    axes[1].set_title("Calibrated spectra")
+    axes[1].set_xlabel("Wavelength (nm)")
+    axes[1].set_ylabel("Spectrum ID")
+    axes[1].set_yticks(yticks)
+    axes[1].set_yticklabels(yticklabels, fontsize=8)
+
+    # --- Shared colorbar ---
+    cbar = fig.colorbar(im1, ax=axes, orientation='vertical', fraction=0.025, pad=0.02)
+    cbar.set_label("Intensity (a.u.)")
+
+    fig.suptitle(f"{tag}: Spectra Heatmaps (Original vs Calibrated)", fontsize=14)
+    fig.tight_layout(rect=[0, 0, 1, 0.95])
+    plt.show()

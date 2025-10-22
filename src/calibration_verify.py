@@ -3,8 +3,8 @@ import pandas as pd
 from IPython.display import display
 import matplotlib.pyplot as plt
 from ramanchada2.protocols.calibration.calibration_model import CalibrationModel
-from utils import (find_peaks, plot_si_peak, load_config, 
-                   get_config_findkw, plot_biclustering)
+from utils import (find_peaks, plot_si_peak, load_config, unicode_unit,
+                   get_config_findkw, plot_biclustering, plot_spectra_heatmaps)
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 import warnings
@@ -115,11 +115,11 @@ for key in upstream["spectracal_*"].keys():
                 axes[_tag] = ax3
         for tag, axis in axes.items():
             try:
-                boundaries = (200, 3*1024+200)
-                #boundaries = (400, 800)
-                bins = 3*1024
+                #boundaries = (200, 3*1024+200)
+                boundaries = (300, 300+1024)
+                bins = 1024
                 #bins = 400
-                strategy = "L2"
+                strategy = "minmax"
                 spline = "pchip"
                 plot_resampled = True
 
@@ -135,7 +135,7 @@ for key in upstream["spectracal_*"].keys():
                 # remove pedestal
                 spe.y = spe.y - np.min(spe.y)
                 # remove baseline
-                spe = spe.subtract_baseline_rc1_snip(niter=40)
+                #spe = spe.subtract_baseline_rc1_snip(niter=40)
                 spe_calibrated = calmodel.apply_calibration_x(spe)
 
                 spe_resampled = spe.resample_spline_filter(
@@ -173,45 +173,100 @@ for key in upstream["spectracal_*"].keys():
 
 print(upstream["spectracal_*"].keys())
 
-for tag in original:
+labels = ["original", "x-calibrated"]
 
-    label = ["original", "x-calibrated"]
+for tag in original:
     id_calibrated = calibrated[tag]["id"]
     if len(id_calibrated) <= 1:
-        print(f"{tag}: At least 2 optical paths needed to compare calibration results, found {len(id_calibrated)}: {id_calibrated}" )
+        print(f"{tag}: At least 2 optical paths needed to compare calibration results, "
+              f"found {len(id_calibrated)}: {id_calibrated}")
         continue
-    y_original = original[tag]["y"]    
-    y_calibrated = calibrated[tag]["y"]
+
+    y_original = np.array(original[tag]["y"])
+    y_calibrated = np.array(calibrated[tag]["y"])
     id_original = original[tag]["id"]
-    id_calibrated = calibrated[tag]["id"]
+    wavelength = original[tag].get("x", np.arange(y_original.shape[1]))  # assume x-values stored here
+
+    if len(y_original) != len(y_calibrated):
+        print(f"Warning: {tag} - different number of spectra "
+              f"(original={len(y_original)}, calibrated={len(y_calibrated)})")
+
     ids = [id_original, id_calibrated]
-    fig, ax = plt.subplots(2, 2, figsize=(16,12))  
+
+    # make a 3x2 grid; bottom row spans both columns
+    fig = plt.figure(figsize=(16, 14))
+    gs = fig.add_gridspec(2, 2, height_ratios=[1, 1])
+    ax_hist1 = fig.add_subplot(gs[0, 0])
+    ax_biclust1 = fig.add_subplot(gs[0, 1])
+    ax_hist2 = fig.add_subplot(gs[1, 0])
+    ax_biclust2 = fig.add_subplot(gs[1, 1])
+
     fig.suptitle(tag)
-    for index, y in enumerate([y_original, y_calibrated]):
+
+    for index, (y, ax_hist, ax_biclust) in enumerate(
+        [(y_original, ax_hist1, ax_biclust1), (y_calibrated, ax_hist2, ax_biclust2)]
+    ):
         try:
             cos_sim_matrix = cosine_similarity(y)
             upper_tri_indices = np.triu_indices_from(cos_sim_matrix, k=1)
             cos_sim_values = cos_sim_matrix[upper_tri_indices]
-            # Step 3: Plot the distribution
+
             bins = np.linspace(0, 1, num=50)
-            ax[index, 0].hist(cos_sim_values, bins=bins, 
-                              color='blue', edgecolor='black')
-            ax[index, 0].set_xlim(0, 1)
-            ax[index, 0].grid() 
-            ax[index, 0].set_xlabel("Cosine similarity")
-            #plt.title('Distribution of Cosine Similarities ({} spectra)'.format(label[index]))
-            plt.xlabel('Cosine Similarity')
-            plt.ylabel('Frequency')
+            ax_hist.hist(cos_sim_values, bins=bins, color='blue', edgecolor='black')
+            ax_hist.set_xlim(0, 1)
+            ax_hist.grid()
+            ax_hist.set_xlabel("Cosine similarity")
+            ax_hist.set_ylabel("Frequency")
+
+            ax_hist.set_title(
+                f"{labels[index]} — Cosine similarity [min={np.min(cos_sim_values):.2f} | "
+                f"median={np.median(cos_sim_values):.2f} | max={np.max(cos_sim_values):.2f}]"
+            )
+
             try:
                 plot_biclustering(cos_sim_matrix, ids[index],
-                                title=label[index], ax=ax[index, 1])
-            except:
-                pass
-            ax[index, 0].set_title(
-                "{} [min={:.2f}|median={:.2f}|max={:.2f}]".format(
-                    "Cosine similarity histogram", np.min(cos_sim_matrix),
-                    np.median(cos_sim_matrix), np.max(cos_sim_matrix)))
-        except Exception:
+                                  title=labels[index], ax=ax_biclust)
+                fig.tight_layout(rect=[0, 0, 1, 0.95])  # leave space for title
+            except Exception as e:
+                print(f"Biclustering plot failed for {tag} ({labels[index]}): {e}")
+
+        except Exception as e:
+            print(f"Error computing cosine similarity for tag {tag} ({labels[index]}): {e}")
             traceback.print_exc()
-    fig.tight_layout()
-    plt.show()
+
+        # --- spectra overlay plot ---
+    plot_spectra_heatmaps(y_original, y_calibrated, wavelength, id_original, tag)
+    try:
+        # y_original and y_calibrated are [n_spectra × n_wavelengths]
+        n_spectra = y_original.shape[0]
+        ncols = min(n_spectra, 4)  # up to 6 spectra per row
+        nrows = int(np.ceil(n_spectra / ncols))
+
+        fig_spec, axes = plt.subplots(nrows, ncols, figsize=(4*ncols, 3*nrows), sharex=True, sharey=True)
+        axes = np.atleast_1d(axes).flatten()
+
+        for i in range(n_spectra):
+            ax = axes[i]
+            ax.plot(wavelength, y_original[i, :], color='blue', alpha=0.7, label='original')
+            ax.plot(wavelength, y_calibrated[i, :], color='orange', alpha=0.7, label='calibrated')
+            ax.set_title(id_original[i] if i < len(id_original) else f"Spectrum {i+1}")
+            ax.grid(True)
+            if i % ncols == 0:
+                ax.set_ylabel("Intensity (a.u.)")
+            if i >= (nrows - 1) * ncols:
+                ax.set_xlabel(f"{unicode_unit('cm-1')}")
+
+        # Hide any unused axes
+        for j in range(i + 1, len(axes)):
+            fig_spec.delaxes(axes[j])
+
+        # Shared legend outside
+        handles, labels_ = axes[0].get_legend_handles_labels()
+        fig_spec.legend(handles, labels_, loc='upper center', ncol=2, frameon=False)
+        fig_spec.suptitle(f"{tag}: Original vs Calibrated Spectra", fontsize=14)
+        fig_spec.tight_layout(rect=[0, 0, 1, 0.95])
+
+        plt.show()
+
+    except Exception as e:
+        print(f"Failed to plot spectra for {tag}: {e}")

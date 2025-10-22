@@ -3,39 +3,127 @@ from utils import (
 )
 import os.path
 from pathlib import Path
-from IPython.display import display, Markdown, HTML
+from IPython.display import display, HTML
 import json
+from utils import toc, toc_anchor, toc_entry, toc_link, toc_heading
+from utils import read_template, get_config_excludecols, parse_numeric_value
+import traceback
 
 
 # + tags=["parameters"]
 product = None
 config_templates = None
 config_root = None
+config_output = None
+path_output = None
 keys = None
 # -
 
+import warnings
+warnings.filterwarnings(
+    "ignore",
+    category=UserWarning,
+    module="openpyxl.worksheet._reader"
+)
 
-_config = load_config(os.path.join(config_root, config_templates))
+_config_path = os.path.join(config_root, config_templates)
+_config = load_config(_config_path)
 
 Path(os.path.dirname(product["nb"])).mkdir(parents=True, exist_ok=True)
 
 templates = _config["templates"]
 
 # --- Table of Contents ---
-toc = "<h2>Table of Contents</h2><ul>"
-for index, _entry in enumerate(templates.keys()):
-    toc += f'<li><a href="#{_entry}">{index+1}. {_entry}</a></li>'
-toc += "</ul>"
-
-display(HTML(f'<div id="top">{toc}</div>'))
+toc_heading(_config.get("title", "Overview"),"h1")
+toc_heading("The data is in the folder:","p")
+toc_link(config_root)
+toc_heading("The configuration is in this file:","p")
+toc_link(_config_path)
+toc_heading("The processing results will be in the folder:","p")
+toc_link(config_output)
+toc(templates.keys())
 
 # --- Detailed Entries ---
 for index, (_entry, data) in enumerate(templates.items()):
-    display(HTML(f'<h2 id="{_entry}">{index+1}. {_entry}</h2>'))
-    display(HTML(f"<p><b>Template:</b> {data.get('template','')}</p>"))
-    display(HTML(f"<p><b>Path:</b> {data.get('path','')}</p>"))
-    display(HTML(f"<p><b>Notes:</b> {data.get('notes','')}</p>"))
-    
+    toc_anchor(index, _entry)
+    toc_entry("template", data)
+    toc_entry("path", data)
+    if data.get("subfolders") is not None:
+        toc_entry("subfolders", data)
+    toc_entry("notes", data)
+
+    _path_excel = os.path.join(config_root, data["template"])
+    df = read_template(_path_excel,
+                       path_spectra=os.path.join(config_root, data["path"]),
+                       subfolders=data.get("subfolders", {}))
+    toc_heading(f"Metadata table shape: rows {df.shape[0]} columns {df.shape[1]}", "h4")
+    # show only cols used for grouping / identifying background
+    exclude_cols = get_config_excludecols(_config, _entry)
+    start_col = 'optical_path'  # specify the column you want to start grouping with
+    groupby_cols = [start_col] + [col for col in df.columns if col not in exclude_cols and col != start_col]
+    # summary
+    sample_col = "sample"
+    path_col = "optical_path"
+    bg_col = "background"
+    laser_col = "laser_power_percent"
+    laser_wl_col = "laser_wl"
+    file_col = "file_name"
+    itime_col = "integration_time_ms"
+    humidity_col = "humidity"
+    temperature_col = "temperature"
+    overexposed_col = "overexposed"
+    for col in [humidity_col, temperature_col]:
+        df[col] = df[col].apply(parse_numeric_value)
+    df["file_extension"] = (
+        df["file_name"]
+        .astype(str)
+        .str.extract(r"\.([^.]+)$")[0]   # capture text after the last '.'
+        .str.lower()
+    )        
+    try:
+        summary = (
+            df.groupby("sample")
+            .agg({
+                path_col: lambda x: ", ".join(sorted(x.dropna().unique())),
+                bg_col:   lambda x: ", ".join(sorted(x.dropna().unique())),
+                laser_wl_col: lambda x: ", ".join(str(v) for v in sorted(x.dropna().unique())),
+                laser_col: lambda x: ", ".join(str(v) for v in sorted(x.dropna().unique())),
+                itime_col: lambda x: ", ".join(str(v) for v in sorted(x.dropna().unique())),
+                overexposed_col: lambda x: ", ".join(str(v) for v in sorted(x.dropna().unique())),
+#                humidity_col: lambda x: ", ".join(str(v) for v in sorted(x.dropna().unique())),
+#                temperature_col: lambda x: ", ".join(str(v) for v in sorted(x.dropna().unique())),
+                humidity_col: lambda x: f"{x.mean():.1f} ± {x.std():.1f}" if len(x.dropna()) > 0 else "NA",
+                temperature_col: lambda x: f"{x.mean():.1f} ± {x.std():.1f}" if len(x.dropna()) > 0 else "NA",
+                "file_extension": lambda x: ", ".join(sorted(x.dropna().unique())),
+                file_col:  "count"
+            })
+            .rename(columns={
+            path_col: "optical_paths",
+            bg_col: "background_status",
+            laser_wl_col: "laser_wavelenght_nm",
+            laser_col: "laser_powers_%",
+            itime_col: "integration_times_ms",
+            overexposed_col: "overexposed",
+            humidity_col: "humidity_%",
+            temperature_col: "temperature_C",
+            "file_extension": "file_extensions",
+            file_col: "n_files"
+            })
+            .reset_index()
+        )
+        display(summary)
+    except Exception:
+        traceback.print_exc()
+
+    # collapsible table
+    html = f"""
+    <details>
+    <summary><b>Preview of grouped metadata</b></summary>
+    {df[groupby_cols].head().to_html(index=False)}
+    </details>
+    """
+    display(HTML(html))
+
     # optional nested dicts
     for field in ["background", "units", "preprocess", "find_kw"]:
         if field in data:
@@ -46,6 +134,11 @@ for index, (_entry, data) in enumerate(templates.items()):
     excl = data.get("exclude_cols", [])
     if excl:
         excl_html = "<ul>" + "".join(f"<li>{c}</li>" for c in excl) + "</ul>"
-        display(HTML("<h4>Excluded Columns:</h4>" + excl_html))
+        #display(HTML("<h4>Excluded Columns:</h4>" + excl_html))
     
+    toc_heading("The results from initial data load in the folder:","h4")
+    toc_link(f"{config_output}/{_entry}")
+    toc_heading("The results from calibration in the folder:","h4")
+    toc_link(f"{path_output}/{_entry}")
+
     display(HTML('<p><a href="#top">Back to top</a></p>'))

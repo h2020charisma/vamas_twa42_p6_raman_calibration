@@ -11,6 +11,8 @@ tasks:
     params:
       config_templates: "{{config_templates}}"
       config_root: "{{config_root}}"
+      config_output: "{{config_output}}"
+      path_output: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}"
       keys: "{{dataset_key}}"
     nbconvert_export_kwargs:
         # optionally hide the code from the report

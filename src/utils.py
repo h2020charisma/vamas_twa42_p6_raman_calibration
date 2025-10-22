@@ -5,6 +5,8 @@ from ramanchada2.spectrum import Spectrum
 import matplotlib.pyplot as plt 
 import numpy as np
 from sklearn.cluster import SpectralBiclustering
+from IPython.display import display, Markdown, HTML
+import re
 
 
 def load_config(path):
@@ -53,7 +55,7 @@ def read_template(_path_excel, path_spectra="", subfolders={}):
     )
 
     df_meta = pd.read_excel(_path_excel, sheet_name=FRONT_SHEET_NAME, skiprows=4)
-    print("meta", df_meta.columns)
+    # print("meta", df_meta.columns)
     df_meta.columns = FRONT_SHEET_COLUMNS.split(",")
     df_merged = pd.merge(df, df_meta, on='optical_path', how='left')
 
@@ -151,4 +153,56 @@ def plot_biclustering(pairwise_distances, identifiers, title='original',ax=None)
 
     ax.set_xlabel(f'{title} spectra')
     ax.set_ylabel(f'{title} spectra')
-    
+
+
+def to_camel_case(s: str) -> str:
+    parts = s.split('_')
+    return parts[0].lower() + ''.join(word.capitalize() for word in parts[1:])
+
+
+def toc_heading(title, h="h3"):
+    display(HTML(f"<{h}>{title}</{h}>"))
+
+
+def toc(keys, title=None):
+    if title is not None:
+        toc_heading(title, "h1")
+    toc = "<h2>Table of Contents</h2>"
+    for index, _entry in enumerate(keys):
+        toc += f'<a href="#{_entry}">{index+1}. {_entry}</a><br/>'
+    toc += ""
+    display(HTML(f'<div id="top">{toc}</div>'))
+
+
+def toc_anchor(index, key):
+    display(HTML(f'<h2 id="{key}">{index+1}. {key}</h2>'))
+
+
+def toc_entry(key, data):
+    if key is None:
+        display(HTML(f"<p>{data}</p>"))
+    else:
+        display(HTML(f"<p><b>{key.capitalize()}:</b> {data.get(key,'')}</p>"))
+
+
+def toc_link(link, data=None, target='blank'):
+    display(HTML(f"<a href='{link}' target='{target}'>{link if data is None else data}</a>"))
+
+
+def parse_numeric_value(v):
+    """Try to convert values like '45-50' or '45 – 50' to a float (average), else NaN."""
+    if pd.isna(v):
+        return np.nan
+    if isinstance(v, (int, float)):
+        return float(v)
+    v = str(v).strip()
+    # Match numeric ranges like 45-50, 45–50, 45 — 50
+    match = re.match(r"^\s*(\d+(?:\.\d+)?)\s*[-–—]\s*(\d+(?:\.\d+)?)\s*$", v)
+    if match:
+        low, high = map(float, match.groups())
+        return (low + high) / 2
+    # Try normal float conversion
+    try:
+        return float(v)
+    except ValueError:
+        return np.nan

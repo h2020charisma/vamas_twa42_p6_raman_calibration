@@ -105,7 +105,8 @@ def get_config_excludecols(_config, key):
 def get_config_findkw(_config, key, tag="si"):
     return _config.get("templates", {}).get(key, {}).get("find_kw", {}).get(tag, {"wlen": 200, "width": 1})
 
-
+def get_config_fitkw(_config, key, tag="ne"):
+    return _config.get("templates", {}).get(key, {}).get("fit_kw", {}).get(tag, {'profile': 'Gaussian', 'vary_baseline': False})
 
 def find_peaks(spe_test, profile="Gaussian", find_kw=None, vary_baseline=False):
     if find_kw is None:
@@ -250,71 +251,86 @@ def get_boundaries(sample, config):
     return config.get("preprocess", {}).get("trim_axes", {}).get("boundaries", [100,3500])
 
 
-def plot_spectra_heatmaps1(y_original, y_calibrated, wavelength, ids, tag):
+def plot_spectra_heatmaps(y_original, y_calibrated, wavelength, ids, tag):
     """
-    Plot original and calibrated spectra as heatmaps.
-    
-    Parameters
-    ----------
-    y_original : ndarray [n_spectra × n_wavelengths]
-    y_calibrated : ndarray [n_spectra × n_wavelengths]
-    wavelength : ndarray [n_wavelengths]
-    ids : list of spectrum identifiers
-    tag : str
+    Plots heatmaps of original and calibrated spectra, ensuring labels are readable
+    and the layout is not overlapping.
+
+    Args:
+        y_original (np.ndarray): 2D array of original spectra (N_spectra x N_wavelengths).
+        y_calibrated (np.ndarray): 2D array of calibrated spectra.
+        wavelength (np.ndarray): 1D array of wavelength values.
+        ids (list or np.ndarray): List of identifiers for each spectrum.
+        tag (str): Title tag for the figure.
     """
     n_spectra = y_original.shape[0]
-
-    # Normalize intensities for better color scaling
     vmin = min(y_original.min(), y_calibrated.min())
     vmax = max(y_original.max(), y_calibrated.max())
 
-    fig, axes = plt.subplots(2, 1, figsize=(12, 6), sharex=True, sharey=True)
-    plt.subplots_adjust(hspace=0.1)
+    # 1. Use constrained_layout for robust layout management
+    # 2. Increase the figure height calculation for readability
+    fig, axes = plt.subplots(
+        2, 1,
+        figsize=(12, max(6, n_spectra * 0.45)), # Slightly taller figure
+        sharex=True, sharey=True,
+        constrained_layout=True # Handles spacing for titles/colorbars automatically
+    )
+
+    # --- Y-Axis Label Logic (Using Original IDs and Sampling if too dense) ---
+    # Only sample the labels if there are more than 30 spectra
+    if n_spectra > 30:
+        # Determine step size to show approximately 15-20 labels
+        step = max(1, n_spectra // 18)
+        yticks = np.arange(0.5, n_spectra, step)
+        # Use the original IDs for the labels, sampled
+        yticklabels = [ids[i] for i in range(0, n_spectra, step)]
+        label_fontsize = 7
+    else:
+        # Show all labels if the dataset is small
+        yticks = np.arange(0.5, n_spectra)
+        yticklabels = ids
+        label_fontsize = 8
 
     # --- Original spectra heatmap ---
     im0 = axes[0].imshow(
-        y_original, 
-        aspect='auto',
-        interpolation='nearest',
+        y_original, aspect='auto', origin='lower',
         extent=[wavelength.min(), wavelength.max(), 0, n_spectra],
-        origin='lower',
-        vmin=vmin, vmax=vmax,
-        cmap='viridis'
+        vmin=vmin, vmax=vmax, cmap='viridis'
     )
-    axes[0].set_title("Original spectra")
-    axes[0].set_ylabel("Spectrum ID")
-
-    # Label each spectrum
-    for i, sid in enumerate(ids):
-        axes[0].text(wavelength.min(), i + 0.5, f"{sid}", va='center', ha='right', fontsize=8)
+    axes[0].set_title("Original Spectra", fontsize=12)
+    axes[0].set_ylabel("Spectrum ID", fontsize=10)
+    axes[0].set_yticks(yticks)
+    axes[0].set_yticklabels(yticklabels, fontsize=label_fontsize)
 
     # --- Calibrated spectra heatmap ---
     im1 = axes[1].imshow(
-        y_calibrated, 
-        aspect='auto',
-        interpolation='nearest',
+        y_calibrated, aspect='auto', origin='lower',
         extent=[wavelength.min(), wavelength.max(), 0, n_spectra],
-        origin='lower',
-        vmin=vmin, vmax=vmax,
-        cmap='viridis'
+        vmin=vmin, vmax=vmax, cmap='viridis'
     )
-    axes[1].set_title("Calibrated spectra")
-    axes[1].set_xlabel("Wavelength (nm)")
-    axes[1].set_ylabel("Spectrum ID")
+    axes[1].set_title("Calibrated Spectra", fontsize=12)
+    axes[1].set_xlabel("Wavelength (nm)", fontsize=10)
+    axes[1].set_ylabel("Spectrum ID", fontsize=10)
+    axes[1].set_yticks(yticks)
+    axes[1].set_yticklabels(yticklabels, fontsize=label_fontsize)
 
-    for i, sid in enumerate(ids):
-        axes[1].text(wavelength.min(), i + 0.5, f"{sid}", va='center', ha='right', fontsize=8)
+    # --- Shared colorbar (Constrained layout handles placement automatically) ---
+    # Use fig.colorbar and pass the list of axes.
+    # We specify 'shrink' and 'aspect' to control its size relative to the axes.
+    cbar = fig.colorbar(im1, ax=axes, orientation='vertical', shrink=0.9, aspect=40)
+    cbar.set_label("Intensity (a.u.)", fontsize=10)
 
-    # --- Colorbar ---
-    cbar = fig.colorbar(im1, ax=axes, orientation='vertical', fraction=0.02, pad=0.02)
-    cbar.set_label("Intensity (a.u.)")
-
+    # --- Overall Title ---
     fig.suptitle(f"{tag}: Spectra Heatmaps (Original vs Calibrated)", fontsize=14)
-    fig.tight_layout(rect=[0, 0, 1, 0.95])
+
+    # The use of 'constrained_layout=True' in plt.subplots() makes the need for
+    # manual adjustments like fig.tight_layout() or plt.subplots_adjust() unnecessary
+    # and ensures no overlap.
+
     plt.show()
 
 
-def plot_spectra_heatmaps(y_original, y_calibrated, wavelength, ids, tag):
+def plot_spectra_heatmaps1(y_original, y_calibrated, wavelength, ids, tag):
     n_spectra = y_original.shape[0]
     vmin = min(y_original.min(), y_calibrated.min())
     vmax = max(y_original.max(), y_calibrated.max())

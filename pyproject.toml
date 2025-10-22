@@ -1,32 +1,34 @@
-[tool.poetry]
-package-mode = false
+[project]
 name = "vamas_twa42_p6_raman_calibration"
-version = "0.1.0"
+version = "1.0.0"
 description = "Data analysis for VAMAS Project 06 Protocols for Raman instrument calibration and harmonisation of Raman data"
-authors = ["Nina Jeliazkova <jeliazkova.nina@gmail.com>"]
 license = "MIT"
+authors = [
+    "Nina Jeliazkova <jeliazkova.nina@gmail.com>",
+]
 readme = "README.md"
-
-[tool.poetry.dependencies]
-python = ">=3.10,<3.13"
-ploomber = "^0.23.2"
-jupyter = "^1.0.0"
-h5py = "^3.10.0"
-h5pyd = "^0.18.0"
-nexusformat = "^1.0.4"
-numpy = "^1.26.4"
-requests = "^2.31.0"
-scipy = "^1.11.4"
-scikit-learn = "^1.4.1.post1"
-ramanchada2 = "^1.3.0"
-pyambit = "^0.0.1"
-pynanomapper = "^2.0.1"
-tables = "^3.9.2"
-emd = "^0.7.0"
-numcompress = "^0.1.2"
-openpyxl = "^3.1.5"
-
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+maintainers = [
+    "Luchesar Iliev <luchesar.iliev@gmail.com>",
+    "Vedrin Jeliazkov <vedrin.jeliazkov@gmail.com>",
+]
+homepage = "https://www.vamas.org/twa42/documents/2024_vamas_twa42_p6_raman_calibration.pdf"
+repository = "https://github.com/h2020charisma/vamas_twa42_p6_raman_calibration"
+requires-python = ">=3.10"
+dependencies = [
+    "emd~=0.7.0",
+    "h5pyd~=0.18.0",
+    "h5py~=3.10.0",
+    "jupyter~=1.0.0",
+    "nexusformat~=1.0.4",
+    "numcompress~=0.1.2",
+    "numpy~=1.26.4",
+    "openpyxl~=3.1.5",
+    "ploomber~=0.23.2",
+    "pyambit>=0.0.2",
+    "pynanomapper~=2.1.0",
+    "ramanchada2~=1.3",
+    "requests~=2.31.0",
+    "scikit-learn~=1.4.2",
+    "scipy~=1.11.4",
+    "tables~=3.9.2",
+]

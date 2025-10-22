@@ -26,14 +26,33 @@ README.md
 
 ---
 
-## 📦 Installation
+## 📦 Quick start
 
-This project uses [Poetry](https://python-poetry.org/) to manage dependencies. To install:
+Install [uv](https://github.com/astral-sh/uv). On Linux, use your preferred package manager, e.g., for Arch, use `pacman -Syu uv`. On Windows, open **PowerShell** as a **regular user** and run:
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
 
+Either clone the repo with Git...
 ```sh
 git clone https://github.com/h2020charisma/vamas_twa42_p6_raman_calibration.git
+```
+```sh
 cd vamas_twa42_p6_raman_calibration
-poetry install
+```
+...or download the [latest ZIP archive](https://github.com/h2020charisma/vamas_twa42_p6_raman_calibration/archive/refs/heads/main.zip), extract it, and open the extracted directory in a PowerShell, Command Prompt, or other suitable terminal, e.g., in Visual Studio Code.
+
+Setup the Python environment:
+```sh
+uv sync
+```
+
+Run a quick demo with:
+```sh
+cd src
+```
+```sh
+uv run ploomber build -e pipeline.demo.yaml
 ```
 
 ## 🚀 Usage
@@ -65,13 +84,13 @@ interpolator: "pchip"
 ### Step 2: Run pipeline
 
 ```sh
-poetry run ploomber build
+uv run ploomber build
 ```
 
 To run a specific task:
 
 ```sh
-poetry run ploomber task spectraframe_0101 
+uv run ploomber task spectraframe_0101 
 ```
 
 Outputs will be saved under the directory specified in `config_output`.
@@ -81,8 +100,10 @@ Outputs will be saved under the directory specified in `config_output`.
 To verify task structure and dependencies without executing:
 
 ```sh
-ploomber status        # Show task status
-ploomber build --dry-run  # Show what would run
+uv run ploomber status  # Show task status
+```
+```sh
+uv run ploomber build --dry-run  # Show what would run
 ```
 
 ## 🔄 Pipeline Overview
@@ -94,7 +115,7 @@ ploomber build --dry-run  # Show what would run
 
 ## 🤝 Contributing
 
-- Fork the repo, create a feature branch, and submit a pull request.
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 
 ## 🔗 References

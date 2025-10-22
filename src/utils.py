@@ -21,9 +21,14 @@ def get_enabled(key, _config):
     else:
         return True
 
+
 def load_spectrum_df(row):
-    print(row["file_name"])
-    return Spectrum.from_local_file(row["file_name"])
+    fname = row["file_name"]
+    if not os.path.isfile(fname):
+        print(f"⚠️ File not found: {fname}")
+        return None        
+    else:
+        return Spectrum.from_local_file(fname)
 
 
 def build_path(row, base_path, subfolders={}):
@@ -34,7 +39,7 @@ def build_path(row, base_path, subfolders={}):
         return os.path.join(base_path, subfolder, row['file_name'])
 
 
-def read_template(_path_excel, path_spectra="", subfolders={}):
+def read_template(_path_excel, path_spectra="", subfolders={}, cleanup=False):
     FRONT_SHEET_NAME = "Front sheet"
     FILES_SHEET_NAME = "Files sheet"
 
@@ -65,9 +70,20 @@ def read_template(_path_excel, path_spectra="", subfolders={}):
         investigation = xls.parse(FRONT_SHEET_NAME, usecols="H", nrows=1, header=None).iloc[0, 0]
     df_merged["provider"] = provider
     df_merged["investigation"] = investigation
-    
-    return df_merged
 
+    return metadata_cleanup(df_merged) if cleanup else df_merged
+
+
+def metadata_cleanup(df_merged):
+    df_merged['background'] = df_merged['background'].str.upper()
+    # I have typo in the template and some participants corrected it :) 
+    df_merged.loc[df_merged["background"] == "BACKGROUND_SUBSTRACTED", "background"] = "BACKGROUND_SUBTRACTED"
+    df_merged.loc[df_merged["background"] == "BACKGROUND_NOT_SUBSTRACTED", "background"] = "BACKGROUND_NOT_SUBTRACTED"
+
+    df_merged['sample'] = df_merged['sample'].str.replace('_bkg', '')
+    # we are not parsing pictures
+    df_merged = df_merged[~df_merged['file_name'].str.lower().str.endswith('.jpg')]    
+    return df_merged 
 
 # Function to check if an item is in "skip" safely
 def is_in_skip(_config, key, filename):
@@ -206,3 +222,25 @@ def parse_numeric_value(v):
         return float(v)
     except ValueError:
         return np.nan
+    
+
+def toc_collapsible(summary="expand", content=""):
+    # collapsible table
+    html = f"""
+    <details>
+    <summary><b>{summary}</b></summary>
+    {content}
+    </details>
+    """
+    display(HTML(html))
+
+
+superscripts = str.maketrans("0123456789-", "⁰¹²³⁴⁵⁶⁷⁸⁹⁻")
+
+
+def unicode_unit(unit):
+    return unit.translate(superscripts)
+
+
+def get_xunit(sample, config):
+    return config.get("units", {}).get(sample.lower(), "cm-1")

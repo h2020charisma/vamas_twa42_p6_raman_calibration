@@ -5,7 +5,9 @@ import os.path
 from pathlib import Path
 from IPython.display import display, HTML
 import json
-from utils import toc, toc_anchor, toc_entry, toc_link, toc_heading
+from utils import (
+    toc, toc_anchor, toc_entry, toc_link, toc_heading, toc_collapsible
+    )
 from utils import read_template, get_config_excludecols, parse_numeric_value
 import traceback
 
@@ -55,7 +57,7 @@ for index, (_entry, data) in enumerate(templates.items()):
     _path_excel = os.path.join(config_root, data["template"])
     df = read_template(_path_excel,
                        path_spectra=os.path.join(config_root, data["path"]),
-                       subfolders=data.get("subfolders", {}))
+                       subfolders=data.get("subfolders", {}), cleanup=False)
     toc_heading(f"Metadata table shape: rows {df.shape[0]} columns {df.shape[1]}", "h4")
     # show only cols used for grouping / identifying background
     exclude_cols = get_config_excludecols(_config, _entry)
@@ -116,20 +118,16 @@ for index, (_entry, data) in enumerate(templates.items()):
         traceback.print_exc()
 
     # collapsible table
-    html = f"""
-    <details>
-    <summary><b>Preview of grouped metadata</b></summary>
-    {df[groupby_cols].head().to_html(index=False)}
-    </details>
-    """
-    display(HTML(html))
+    toc_collapsible(summary="Preview of grouped metadata", content=df[groupby_cols].head().to_html(index=False))
 
     # optional nested dicts
+    msg = ""
     for field in ["background", "units", "preprocess", "find_kw"]:
         if field in data:
             content = json.dumps(data[field], indent=2)
-            display(HTML(f"<h4>{field.capitalize()}:</h4><pre>{content}</pre>"))
-    
+            msg = msg + f"<h4>{field.capitalize()}:</h4><pre>{content}</pre>"
+    if msg != "":
+        toc_collapsible(summary="Other settings", content=msg)
     # excluded columns
     excl = data.get("exclude_cols", [])
     if excl:

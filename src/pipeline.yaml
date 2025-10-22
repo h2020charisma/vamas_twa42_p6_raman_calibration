@@ -22,7 +22,7 @@ tasks:
     name: "spectraframe_[[key]]"
     upstream: []
     product: 
-      nb: "{{config_output}}/[[key]]/spectraframe_load.ipynb"
+      nb: "{{config_output}}/[[key]]/spectraframe_load.html"
       h5: "{{config_output}}/[[key]]/spectraframe_load.h5"
       xlsx: "{{config_output}}/[[key]]/spectraframe_load.xlsx"
     params:

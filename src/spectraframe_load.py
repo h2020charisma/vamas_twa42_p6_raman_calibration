@@ -1,12 +1,19 @@
 from ramanchada2.spectrum import Spectrum, hdr_from_multi_exposure
 from utils import (
     read_template, load_config, is_in_skip, 
-    get_config_excludecols
+    get_config_excludecols,
+    metadata_cleanup, load_spectrum_df,
+    unicode_unit, get_xunit
 )
+from IPython.display import display, HTML
 import os.path
 from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
+from utils import (
+    toc, toc_anchor, toc_entry, toc_link, toc_heading, toc_collapsible
+    )
+import numpy as np
 
 
 # + tags=["parameters"]
@@ -17,28 +24,29 @@ key = None
 # -
 
 
+import warnings
+warnings.filterwarnings(
+    "ignore",
+    category=UserWarning,
+    module="openpyxl.worksheet._reader"
+)
+warnings.filterwarnings("ignore", category=pd.errors.PerformanceWarning)
+
 _config = load_config(os.path.join(config_root, config_templates))
 print(key, _config["templates"].keys())
 
 Path(os.path.dirname(product["h5"])).mkdir(parents=True, exist_ok=True)
 
 entry = _config["templates"][key]
+toc_heading(key, "h1")
+
 entry
 
 _path_excel = os.path.join(config_root, entry["template"])
 df = read_template(_path_excel, path_spectra=os.path.join(config_root, entry["path"]), subfolders=entry.get("subfolders", {}))
-
-df['background'] = df['background'].str.upper()
-# I have typo in the template and some participants corrected it :) 
-df.loc[df["background"] == "BACKGROUND_SUBSTRACTED", "background"] = "BACKGROUND_SUBTRACTED"
-df.loc[df["background"] == "BACKGROUND_NOT_SUBSTRACTED", "background"] = "BACKGROUND_NOT_SUBTRACTED"
-
-df['sample'] = df['sample'].str.replace('_bkg', '')
+df = metadata_cleanup(df)
 
 df["source"] = str(entry)
-
-# we are not parsing pictures
-df = df[~df['file_name'].str.lower().str.endswith('.jpg')]
 
 # this likely will need to be configurable
 exclude_cols = get_config_excludecols(_config, key)
@@ -46,7 +54,6 @@ exclude_cols = get_config_excludecols(_config, key)
 print(exclude_cols)
 
 # Get columns to group by
-
 start_col = 'optical_path'  # specify the column you want to start grouping with
 groupby_cols = [start_col] + [col for col in df.columns if col not in exclude_cols and col != start_col]
 
@@ -57,16 +64,18 @@ df["background_file"] = None
 grouped_df = df.groupby(groupby_cols, dropna=False)
 
 # figure out background files
+
 for group_keys, sample_data in grouped_df:
-    print(sample_data.shape, group_keys)    
+    toc_collapsible(f"{sample_data.shape} {group_keys[0]} {group_keys[1]}", sample_data.to_html(index=False) + f"<p>{group_keys}</p>")    
+
     try:
-        _spe = sample_data.apply(lambda row: Spectrum.from_local_file(row["file_name"]) if os.path.isfile(row["file_name"]) else None, axis=1)
+        _spe = sample_data.apply(load_spectrum_df, axis=1)
     except Exception as err:
         print(err)
         continue
     fig, ax = plt.subplots(1, 1, figsize=(15, 3))
     ax.title.set_text("{} {}".format(group_keys[0], group_keys[1]))
-
+    x_unit = get_xunit(sample_data["sample"].unique()[0], entry)
     # .trim_axes(method='x-axis', boundaries=(100, 3400))
     sample_data["spectrum"] = _spe
     try:
@@ -76,8 +85,14 @@ for group_keys, sample_data in grouped_df:
                 row["background"],
                 "" if row["overexposed"] == "NO" else "overexp")),
             axis=1)
+        
+        ax.set_xlabel(f"{unicode_unit(x_unit)}")
+        ax.set_ylabel(f"Intensity (a.u.)")        
+        #plt.xlabel(f"Wavenumber ({unicode_unit(unit)})")
     except Exception as err:
         print(err)
+    display(fig)   # Forces Jupyter to render figure immediately
+    plt.close(fig) # optional cleanup        
     if sample_data.shape[0] < 2:
         continue
     background_only_file = sample_data.loc[sample_data["background"] == "BACKGROUND_ONLY", "file_name"]
@@ -106,13 +121,19 @@ for index, row in df_bkg_subtracted.iterrows():
 
 df_bkg_notsubtracted = df.loc[df["background"] == "BACKGROUND_NOT_SUBTRACTED"]
 
+toc_heading("Load, plot , substract background", "h2")
+toc_heading("Each row is assigned a background file","p")
+
+root = Path(config_root)
 new_rows = []
 for index, row in df_bkg_notsubtracted.iterrows():
     if row["background_file"] is None:
         continue
+    toc_collapsible(f"{row['sample']} ({row['optical_path']}) : {Path(row['file_name']).relative_to(root)}",
+                    Path(row["background_file"]).relative_to(root))
     fig, (ax, tax) = plt.subplots(2, 1, figsize=(15, 4))
     ax.title.set_text(os.path.basename(row["file_name"])) 
-    print(row["file_name"], row["background_file"])    
+
     new_row = row.copy()
     if os.path.isfile(row["background_file"]):
         spe_bkg = Spectrum.from_local_file(row["background_file"])
@@ -122,16 +143,20 @@ for index, row in df_bkg_notsubtracted.iterrows():
     else:
         spe_bkg_nospikes = None
     if not os.path.isfile(row["file_name"]):
-        print("Can't find file {}".format(row["file_name"]))
-        ax.title.set_text("Can't find file {}".format(os.path.basename(row["file_name"]))) 
+        print("⚠️ File not found: {}".format(row["file_name"]))
+        ax.title.set_text("⚠️ File not found: {}".format(os.path.basename(row["file_name"]))) 
         continue
     spe = Spectrum.from_local_file(row["file_name"])
     spe.plot(label="BACKGROUND_NOT_SUBTRACTED {} ({})".format(row["sample"], row["optical_path"]), ax=ax)    
 
     new_spe = spe if is_in_skip(_config, key, filename=os.path.basename(row["background_file"])) or spe_bkg_nospikes is None else spe - spe_bkg_nospikes
+    
     # new_spe.y[new_spe.y < 0] = 0
     # remove pedestal
-    # new_spe.y = new_spe.y - np.min(new_spe.y)
+    if min(new_spe.y)>0:
+        # remove pedestal
+        new_spe.y = new_spe.y - np.min(new_spe.y)
+
     # new_spe = new_spe.recover_spikes()
 
     new_row["spectrum"] = new_spe
@@ -139,7 +164,8 @@ for index, row in df_bkg_notsubtracted.iterrows():
                                     row["optical_path"]), ax=ax.twinx(), linestyle='--', color='orange')
     new_row["background"] = "BACKGROUND_SUBTRACTED"
     new_rows.append(new_row)
-    #plt.close(fig)
+    display(fig)
+    plt.close(fig)
 
 if new_rows:  # Only concatenate if there are new rows to add
     new_df = pd.DataFrame(new_rows)  # Convert list of rows to DataFrame
@@ -152,7 +178,10 @@ hdr_added = False
 df_ne = df.loc[(df["background"] == "BACKGROUND_SUBTRACTED") & (df["sample"] == "Neon")]
 grouped_df = df_ne.groupby(["laser_wl", "optical_path"], dropna=False)
 
-# HDR merge on all groups that have integraiton time - not only Ne 
+toc_heading("HDR merge", "h2")
+toc_heading("HDR merge on all groups that have integration time - not only Ne","p")
+
+
 for group_keys, op_data in grouped_df:
     if 'integration_time_ms' not in op_data.columns or op_data['integration_time_ms'].dropna().empty:
         # Skip this group if integration_time_ms is missing or empty

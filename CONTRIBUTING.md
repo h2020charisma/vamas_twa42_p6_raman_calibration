@@ -75,6 +75,43 @@ uv run pre-commit install
 
 See also the [documentation](https://docs.ploomber.io/en/latest/) on Ploomber.
 
+## Testing with local dependencies
+
+> [!NOTE]
+> [ramanchada2](https://github.com/h2020charisma/ramanchada2) is used as an example here, but it should work the same for most other dependencies.
+
+Replace the PyPI dependency with a locally cloned Git repo:
+```sh
+uv add --editable ../ramanchada2
+```
+
+> [!IMPORTANT]
+> Remember to run the following **before** committing your changes. Alternatively, make sure the commit does **not** include `pyproject.toml` and `uv.lock`.
+
+Restore the original dependencies:
+```sh
+git restore -- pyproject.toml uv.lock
+```
+```sh
+uv sync
+```
+
+> [!TIP]
+> While testing with a local dependency, `git pull` may fail if the branch on GitHub has changes to `pyproject.toml` and `uv.lock`, and *will* fail if you default to pull with rebase. There are different solutions. The simplest one, as described above, is to restore the files, pull, and re-add the local dependency. In some cases, you may also consider using [git stash](https://git-scm.com/docs/git-stash), for example:
+> ```sh
+> git stash
+> ```
+> ```sh
+> git pull --rebase
+> ```
+> ```sh
+> git restore -s stash -- pyproject.toml uv.sync
+> ```
+> ```sh
+> git stash drop
+> ```
+> If you had other local changes besides `pyproject.toml` and `uv.sync`, you likely would want to restore them as well **before** dropping the stash. Also, we use `git restore` and `git stash drop` instead of simply `git stash pop` in order to *completely* override any changes to these files from GitHub. If the remote changes are important, however, you might prefer using `git stash pop`. This would require resolving any possible conflicts.
+
 ## Running the formatters & linters
 
 > [!WARNING]

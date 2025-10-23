@@ -110,7 +110,7 @@ uv sync
 > ```sh
 > git stash drop
 > ```
-> If you had other local changes besides `pyproject.toml` and `uv.sync`, you likely would want to restore them as well **before** dropping the stash. Also, we use `git restore` and `git stash drop` instead of simply `git stash pop` in order to *completely* override any changes to these files from GitHub. If the remote changes are important, however, you might prefer using `git stash pop`. This would require resolving any possible conflicts.
+> If you had other unstaged and uncommitted local changes besides `pyproject.toml` and `uv.sync`, you likely would want to restore them as well **before** dropping the stash. Also, we use `git restore` and `git stash drop` instead of simply `git stash pop` in order to *completely* override any changes to these files from GitHub. If the remote changes are important, however, you might prefer using `git stash pop`. This would require resolving any possible conflicts.
 
 ## Running the formatters & linters
 

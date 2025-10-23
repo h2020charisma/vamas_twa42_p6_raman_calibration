@@ -3573,7 +3573,7 @@ wheels = [
 
 [[package]]
 name = "ramanchada2"
-version = "1.3.0"
+version = "1.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "brukeropusreader" },
@@ -3592,9 +3592,9 @@ dependencies = [
     { name = "statsmodels" },
     { name = "uncertainties" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/1e/48/892c167e893f5817a3d893051cb43456cba5a138e2f5753046fd4d5f8877/ramanchada2-1.3.0.tar.gz", hash = "sha256:fd38dbda803b828a6ec1746d4858504db812c45ea5959f3ca4e39c958e414c2c", size = 5923279, upload-time = "2025-02-28T13:57:30.342Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/8c/ce/5c2776bbad4202ed5aeb8119fa805d9efb548b07a8375e0b32442548e7f3/ramanchada2-1.3.1.tar.gz", hash = "sha256:b0ff2d06ec3c0335a957c6ec43337756b0ff3d1c4adf863e4cf71ef27cfcb0d0", size = 5922723, upload-time = "2025-10-23T11:41:48.963Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/5d/6e/4bd4b1b95ec5e2a5842e9d67dabd1ea6ac47627c823d5272bdccaefb2042/ramanchada2-1.3.0-py3-none-any.whl", hash = "sha256:064797b30e5c7c8e1b67483792f454e9471134aa086a06c247b4c277f09302ab", size = 6082578, upload-time = "2025-02-28T13:57:28.249Z" },
+    { url = "https://files.pythonhosted.org/packages/c0/ac/8d8a5ab64c3ed91ecdcf8e190dfd6e7bf8ca8e3cd509901c7e36bfc498c7/ramanchada2-1.3.1-py3-none-any.whl", hash = "sha256:557343112953ae282bc5f72d6099f2be08e3c29ff202da7de3767ef8fafc0088", size = 6082617, upload-time = "2025-10-23T11:41:46.98Z" },
 ]
 
 [[package]]
@@ -4346,7 +4346,7 @@ requires-dist = [
     { name = "ploomber", specifier = "~=0.23.2" },
     { name = "pyambit", specifier = ">=0.0.2" },
     { name = "pynanomapper", specifier = "~=2.1.0" },
-    { name = "ramanchada2", specifier = "~=1.3" },
+    { name = "ramanchada2", specifier = "~=1.3.1" },
     { name = "requests", specifier = "~=2.31.0" },
     { name = "scikit-learn", specifier = "~=1.4.2" },
     { name = "scipy", specifier = "~=1.11.4" },

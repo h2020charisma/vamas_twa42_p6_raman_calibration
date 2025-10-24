@@ -87,3 +87,14 @@ tasks:
     nbconvert_export_kwargs:
         # optionally hide the code from the report
         exclude_input: True            
+
+  - source: release.py
+    upstream: ["calibration_verify"]
+    product: 
+      nb: "{{release_folder}}/index.html"
+    params:
+      results_folder: "{{config_output}}"
+      release_folder: "{{release_folder}}"
+    nbconvert_export_kwargs:
+        # optionally hide the code from the report
+        exclude_input: True            

@@ -29,3 +29,6 @@ calibration_key:
   - "P6_01001"
   - "P6_01201"   
   - "P6_01202"
+
+report_format: "html"
+release_folder: "release"  

@@ -37,19 +37,16 @@ templates = _config["templates"]
 
 # --- Table of Contents ---
 toc_heading(_config.get("title", "Overview"),"h1")
-toc_heading("The data is in the folder:","p")
-toc_link(config_root)
-toc_heading("The configuration is in this file:","p")
-toc_link(_config_path)
-toc_heading("The processing results will be in the folder:","p")
-toc_link(config_output)
+toc_link(os.path.relpath(config_root, config_output), label="The data is in the folder:")
+toc_link( os.path.relpath(_config_path, config_output), label="The configuration is in this file:")
+toc_link(os.path.relpath(config_output, config_output),label="The processing results will be in the folder:")
 toc(templates.keys())
 
 # --- Detailed Entries ---
 for index, (_entry, data) in enumerate(templates.items()):
     toc_anchor(index, _entry)
-    toc_entry("template", data)
-    toc_entry("path", data)
+    toc_link(os.path.relpath(os.path.join(config_root, data["template"]), config_output), label="Template")
+    toc_link(os.path.relpath(os.path.join(config_root, data["path"]), config_output), label="path")
     if data.get("subfolders") is not None:
         toc_entry("subfolders", data)
     toc_entry("notes", data)
@@ -135,8 +132,8 @@ for index, (_entry, data) in enumerate(templates.items()):
         #display(HTML("<h4>Excluded Columns:</h4>" + excl_html))
     
     toc_heading("The results from initial data load in the folder:","h4")
-    toc_link(f"{config_output}/{_entry}")
+    toc_link(os.path.relpath(f"{config_output}/{_entry}", config_output))
     toc_heading("The results from calibration in the folder:","h4")
-    toc_link(f"{path_output}/{_entry}")
+    toc_link(os.path.relpath(f"{path_output}/{_entry}", config_output))
 
     display(HTML('<p><a href="#top">Back to top</a></p>'))

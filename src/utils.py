@@ -195,15 +195,22 @@ def toc_anchor(index, key):
     display(HTML(f'<h2 id="{key}">{index+1}. {key}</h2>'))
 
 
-def toc_entry(key, data):
+def toc_entry(key, data, relpath = None):
     if key is None:
         display(HTML(f"<p>{data}</p>"))
     else:
-        display(HTML(f"<p><b>{key.capitalize()}:</b> {data.get(key,'')}</p>"))
+        val = data.get(key, '')
+        if relpath is not None:
+            val = os.path.relpath(val, relpath)
+        display(HTML(f"<p><b>{key.capitalize()}:</b> {val}</p>"))
 
 
-def toc_link(link, data=None, target='blank'):
-    display(HTML(f"<a href='{link}' target='{target}'>{link if data is None else data}</a>"))
+def toc_link(link, data=None, target='blank', label=None):
+    _link = f"<a href='{link}' target='{target}'>{link if data is None else data}</a>"
+    if label is None:
+        display(HTML(_link))
+    else:        
+        display(HTML(f"<p><b>{label.capitalize()}:</b> {_link}</p>"))        
 
 
 def parse_numeric_value(v):

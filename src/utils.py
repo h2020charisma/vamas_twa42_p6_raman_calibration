@@ -7,6 +7,7 @@ import numpy as np
 from sklearn.cluster import SpectralBiclustering
 from IPython.display import display, Markdown, HTML
 import re
+from ramanchada2.protocols.calibration.calibration_model import CalibrationModel
 
 
 def load_config(path):
@@ -386,3 +387,14 @@ def plot_spectra_heatmaps1(y_original, y_calibrated, wavelength, ids, tag):
     fig.suptitle(f"{tag}: Spectra Heatmaps (Original vs Calibrated)", fontsize=14)
     fig.tight_layout(rect=[0, 0, 1, 0.95])
     plt.show()
+
+
+def load_calibration_model(laser_wl, optical_path, calmodel_path):
+    print("load_calibration_model")
+    pkl_files = [file for file in os.listdir(calmodel_path) if file.endswith(".pkl")]
+    for modelfile in pkl_files:
+        tags = os.path.basename(modelfile).replace(".pkl", "").split("_")
+        if optical_path == tags[2] and laser_wl == int(tags[1]):
+            return CalibrationModel.from_file(
+                os.path.join(calmodel_path, modelfile))
+    return None

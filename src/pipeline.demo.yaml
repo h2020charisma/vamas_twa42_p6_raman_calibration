@@ -7,7 +7,7 @@ tasks:
     name: "spectraframe_[[key]]"
     upstream: []
     product: 
-      nb: "{{config_output}}/[[key]]/spectraframe_load.{{nb_suffix}}"
+      nb: "{{config_output}}/[[key]]/spectraframe_load.{{report_format}}"
       h5: "{{config_output}}/[[key]]/spectraframe_load.h5"
       xlsx: "{{config_output}}/[[key]]/spectraframe_load.xlsx"
     params:
@@ -16,11 +16,12 @@ tasks:
     grid:
       key: "{{dataset_key}}"
 
+
   - source: spectraframe_calibrate.py
     name: "spectracal_[[key]]"    
     product: 
-      nb: "{{config_output}}_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/spectracal.{{nb_suffix}}"
-      calmodels: "{{config_output}}_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/calmodels"
+      nb: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/spectracal.{{report_format}}"
+      calmodels: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/calmodels"
     upstream: "spectraframe_*"      
     params:
       config_templates: "{{config_templates}}"
@@ -28,7 +29,7 @@ tasks:
       neon_tag: "{{ne_tag}}"
       si_tag: "{{si_tag}}"
       pst_tag: "{{pst_tag}}"
-      apap_tag: "{{validation_tag}}"
+      apap_tag: "{{apap_tag}}"
       fit_neon_peaks: "{{fit_ne_peaks}}"
       match_mode: "{{match_mode}}"
       interpolator: "{{interpolator}}"   
@@ -39,27 +40,33 @@ tasks:
   - source: spectraframe_ycalibrate.py
     name: "spectracaly_[[key]]"    
     product: 
-      nb: "{{config_output}}_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/spectracaly.{{nb_suffix}}"
+      nb: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/spectracaly.{{report_format}}"
+      ycalmodels: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/ycalmodels"      
     upstream: ["spectraframe_*","spectracal_*"]
     params:
       config_templates: "{{config_templates}}"
       config_root: "{{config_root}}"
     grid:
       key: "{{dataset_key}}"
+
  
   - source: calibration_verify.py
-    upstream: ["spectraframe_*","spectracal_*"]
+    upstream: ["spectraframe_*","spectracal_*","spectracaly_*"]
+    name: "calibration_verify_[[mode]]"    
     product: 
-      nb: "{{config_output}}_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/assessment/calibration_verify.{{nb_suffix}}"
+      nb: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/assessment/calibration_verify_[[mode]].{{report_format}}"
     params:
       config_templates: "{{config_templates}}"
       config_root: "{{config_root}}"
-      validation_tag: "{{validation_tag}}"
-      test_tags: "{{test_tags}}"
+      validation_tag: "{{apap_tag}}"
+      test_tags: "S0N"
+      neon_tag: "{{ne_tag}}"
       si_tag: "{{si_tag}}"
       pst_tag: "{{pst_tag}}"
-      calcite_tag: "{{calcite_tag}}"    
+      calcite_tag: "{{calcite_tag}}"         
     nbconvert_export_kwargs:
         # optionally hide the code from the report
         exclude_input: True            
+    grid:
+      mode: ["x"]
  

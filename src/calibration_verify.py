@@ -10,6 +10,9 @@ import numpy as np
 import warnings
 import traceback
 import pickle
+from utils import (
+    toc, toc_anchor, toc_entry, toc_link, toc_heading, toc_collapsible
+    )
 
 
 # + tags=["parameters"]
@@ -81,13 +84,12 @@ def plot_distances(pairwise_distances, identifiers):
     plt.show()
 
 
+toc_heading(f"Comparison of {mode} calibrated spectra","h1")
+
 original = {}
 calibrated = {}
 for key in upstream["spectracal_*"].keys():
-    # print(key)
     entry = key.replace("spectracal_","")
-    if entry == "x01001":
-        continue
     key_frame = key.replace("spectracal","spectraframe")
     data_file = upstream["spectraframe_*"][key_frame]["h5"]
     spectra_frame = pd.read_hdf(data_file, key="templates_read")
@@ -189,16 +191,14 @@ for key in upstream["spectracal_*"].keys():
                 traceback.print_exc()
             axis.grid()
 
-print(upstream["spectracal_*"].keys())
-
 labels = ["original", f"{mode}-calibrated"]
 
 for tag in original:
+    toc_heading(tag, "h2")
     id_calibrated = calibrated[tag]["id"]
     if len(id_calibrated) <= 1:
         print(f"{tag}: At least 2 optical paths needed to compare calibration results, "
               f"found {len(id_calibrated)}: {id_calibrated}")
-        continue
 
     y_original = np.array(original[tag]["y"])
     y_calibrated = np.array(calibrated[tag]["y"])
@@ -212,49 +212,52 @@ for tag in original:
 
     ids = [id_original, id_calibrated]
 
-    # make a 3x2 grid; bottom row spans both columns
-    fig = plt.figure(figsize=(16, 14))
-    gs = fig.add_gridspec(2, 2, height_ratios=[1, 1])
-    ax_hist1 = fig.add_subplot(gs[0, 0])
-    ax_biclust1 = fig.add_subplot(gs[0, 1])
-    ax_hist2 = fig.add_subplot(gs[1, 0])
-    ax_biclust2 = fig.add_subplot(gs[1, 1])
+    if len(id_calibrated) > 1:
+        # make a 3x2 grid; bottom row spans both columns
+        fig = plt.figure(figsize=(16, 14))
+        gs = fig.add_gridspec(2, 2, height_ratios=[1, 1])
+        ax_hist1 = fig.add_subplot(gs[0, 0])
+        ax_biclust1 = fig.add_subplot(gs[0, 1])
+        ax_hist2 = fig.add_subplot(gs[1, 0])
+        ax_biclust2 = fig.add_subplot(gs[1, 1])
 
-    fig.suptitle(tag)
+        fig.suptitle(tag)
 
-    for index, (y, ax_hist, ax_biclust) in enumerate(
-        [(y_original, ax_hist1, ax_biclust1), (y_calibrated, ax_hist2, ax_biclust2)]
-    ):
-        try:
-            cos_sim_matrix = cosine_similarity(y)
-            upper_tri_indices = np.triu_indices_from(cos_sim_matrix, k=1)
-            cos_sim_values = cos_sim_matrix[upper_tri_indices]
-
-            bins = np.linspace(0, 1, num=50)
-            ax_hist.hist(cos_sim_values, bins=bins, color='blue', edgecolor='black')
-            ax_hist.set_xlim(0, 1)
-            ax_hist.grid()
-            ax_hist.set_xlabel("Cosine similarity")
-            ax_hist.set_ylabel("Frequency")
-
-            ax_hist.set_title(
-                f"{labels[index]} — Cosine similarity [min={np.min(cos_sim_values):.2f} | "
-                f"median={np.median(cos_sim_values):.2f} | max={np.max(cos_sim_values):.2f}]"
-            )
-
+        for index, (y, ax_hist, ax_biclust) in enumerate(
+            [(y_original, ax_hist1, ax_biclust1), (y_calibrated, ax_hist2, ax_biclust2)]
+        ):
             try:
-                plot_biclustering(cos_sim_matrix, ids[index],
-                                  title=labels[index], ax=ax_biclust)
-                fig.tight_layout(rect=[0, 0, 1, 0.95])  # leave space for title
+                cos_sim_matrix = cosine_similarity(y)
+                upper_tri_indices = np.triu_indices_from(cos_sim_matrix, k=1)
+                cos_sim_values = cos_sim_matrix[upper_tri_indices]
+
+                bins = np.linspace(0, 1, num=50)
+                ax_hist.hist(cos_sim_values, bins=bins, color='blue', edgecolor='black')
+                ax_hist.set_xlim(0, 1)
+                ax_hist.grid()
+                ax_hist.set_xlabel("Cosine similarity")
+                ax_hist.set_ylabel("Frequency")
+
+                ax_hist.set_title(
+                    f"{labels[index]} — Cosine similarity [min={np.min(cos_sim_values):.2f} | "
+                    f"median={np.median(cos_sim_values):.2f} | max={np.max(cos_sim_values):.2f}]"
+                )
+
+                try:
+                    plot_biclustering(cos_sim_matrix, ids[index],
+                                    title=labels[index], ax=ax_biclust)
+                    fig.tight_layout(rect=[0, 0, 1, 0.95])  # leave space for title
+                except Exception as e:
+                    print(f"Biclustering plot failed for {tag} ({labels[index]}): {e}")
+
             except Exception as e:
-                print(f"Biclustering plot failed for {tag} ({labels[index]}): {e}")
+                print(f"Error computing cosine similarity for tag {tag} ({labels[index]}): {e}")
+                traceback.print_exc()
 
-        except Exception as e:
-            print(f"Error computing cosine similarity for tag {tag} ({labels[index]}): {e}")
-            traceback.print_exc()
-
+    toc_heading("Spectra overlay plot", "h3")
         # --- spectra overlay plot ---
     plot_spectra_heatmaps(y_original, y_calibrated, wavelength, id_original, tag)
+    toc_heading(f"Original vs {mode}-calibrated plots", "h3")
     try:
         # y_original and y_calibrated are [n_spectra × n_wavelengths]
         n_spectra = y_original.shape[0]
@@ -267,7 +270,7 @@ for tag in original:
         for i in range(n_spectra):
             ax = axes[i]
             ax.plot(wavelength, y_original[i, :], color='blue', alpha=0.7, label='original')
-            ax.plot(wavelength, y_calibrated[i, :], color='orange', alpha=0.7, label='calibrated')
+            ax.plot(wavelength, y_calibrated[i, :], color='orange', alpha=0.7, label=f'{mode}-calibrated', linestyle=":")
             ax.set_title(id_original[i] if i < len(id_original) else f"Spectrum {i+1}")
             ax.grid(True)
             if i % ncols == 0:
@@ -280,10 +283,13 @@ for tag in original:
             fig_spec.delaxes(axes[j])
 
         # Shared legend outside
-        handles, labels_ = axes[0].get_legend_handles_labels()
-        fig_spec.legend(handles, labels_, loc='upper center', ncol=2, frameon=False)
-        fig_spec.suptitle(f"{tag}: Original vs Calibrated Spectra", fontsize=14)
-        fig_spec.tight_layout(rect=[0, 0, 1, 0.95])
+        #if len(axes) >0:
+        #    handles, labels_ = axes[0].get_legend_handles_labels()
+        #    fig_spec.legend(handles, labels_, loc='upper center', ncol=2, frameon=False)
+        #else:
+        fig_spec.legend()
+        fig_spec.suptitle(f"{tag}", fontsize=14)
+        fig_spec.tight_layout(rect=[0, 0, 1, 0.9])
 
         plt.show()
 

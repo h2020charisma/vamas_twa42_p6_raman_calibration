@@ -8,7 +8,8 @@ from sklearn.cluster import SpectralBiclustering
 from IPython.display import display, Markdown, HTML
 import re
 from ramanchada2.protocols.calibration.calibration_model import CalibrationModel
-
+from ramanchada2.protocols.calibration.ycalibration import (
+    YCalibrationComponent, YCalibrationCertificate, CertificatesDict)
 
 def load_config(path):
     with open(path, 'r') as file:
@@ -398,3 +399,20 @@ def load_calibration_model(laser_wl, optical_path, calmodel_path):
             return CalibrationModel.from_file(
                 os.path.join(calmodel_path, modelfile))
     return None
+
+
+def create_ycal(spe_srm, xcalmodel=None, cert_srm=None, window_length=0):
+    if cert_srm is None:
+        return None, spe_srm
+    srm = spe_srm.trim_axes(method="x-axis", boundaries=cert_srm.raman_shift)
+    if xcalmodel is not None:
+        srm_calibrated = xcalmodel.apply_calibration_x(srm)
+    else:
+        srm_calibrated = srm
+    if window_length > 0:
+        maxy = max(srm_calibrated.y)
+        srm_calibrated = srm_calibrated.smoothing_RC1(
+            method="savgol", window_length=window_length, polyorder=3)
+        srm_calibrated.y = maxy*srm_calibrated.y/max(srm_calibrated.y)
+    ycal = YCalibrationComponent(cert_srm.wavelength, srm_calibrated, cert_srm)
+    return ycal, srm_calibrated

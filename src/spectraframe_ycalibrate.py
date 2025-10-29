@@ -1,5 +1,6 @@
 import pandas as pd
 import os.path
+from pathlib import Path
 from utils import (find_peaks, plot_si_peak, get_config_units, 
                    load_config, get_config_findkw,
                    load_calibration_model)
@@ -7,6 +8,7 @@ from ramanchada2.protocols.calibration.ycalibration import (
     YCalibrationComponent, YCalibrationCertificate, CertificatesDict)
 import matplotlib.pyplot as plt
 import traceback
+import pickle
 
 
 # + tags=["parameters"]
@@ -62,6 +64,11 @@ def main(df, calmodel_path):
                 xcalmodel = None
             ycal, srm_calibrated = create_ycal(
                 srm_spe, xcalmodel=xcalmodel, cert_srm=certs[cert], window_length=40)
+            # save y model
+            with open(os.path.join(product["ycalmodels"],
+                                    f"ycalmodel_{laser_wl}_{optical_path}.pkl"), "wb") as f:
+                pickle.dump(ycal, f)
+        
             srm_spe.plot(ax=axes[0].twinx(), label='measured')
             srm_calibrated.plot(ax=axes[0].twinx(),
                                 color='green', fmt='--')
@@ -79,6 +86,7 @@ def main(df, calmodel_path):
                 spe_ycalibrated = ycal.process(spe_to_correct)
                 spe_ycalibrated.plot(ax=axes[index+1].twinx(), fmt='--', color='orange', label='y-calibrated')
 
+Path(product["ycalmodels"]).mkdir(parents=True, exist_ok=True)
 
 try:
     df = pd.read_hdf(upstream["spectraframe_*"][f"spectraframe_{key}"]["h5"], key="templates_read")

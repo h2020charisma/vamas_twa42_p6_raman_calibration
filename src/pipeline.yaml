@@ -55,7 +55,7 @@ tasks:
     upstream: ["spectraframe_*"]
     name: "spectra_tips"   
     product: 
-      nb: "{{config_output}}/spectraframe_tips.ipynb" 
+      nb: "{{config_output}}/twinning/spectraframe_tips.ipynb" 
  
 
 
@@ -63,6 +63,7 @@ tasks:
     name: "spectracaly_[[key]]"    
     product: 
       nb: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/spectracaly.{{report_format}}"
+      ycalmodels: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/ycalmodels"      
     upstream: ["spectraframe_*","spectracal_*"]
     params:
       config_templates: "{{config_templates}}"
@@ -72,7 +73,7 @@ tasks:
       
  
   - source: calibration_verify.py
-    upstream: ["spectraframe_*","spectracal_*"]
+    upstream: ["spectraframe_*","spectracal_*","spectracaly_*"]
     product: 
       nb: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/assessment/calibration_verify.{{report_format}}"
     params:

@@ -74,8 +74,9 @@ tasks:
  
   - source: calibration_verify.py
     upstream: ["spectraframe_*","spectracal_*","spectracaly_*"]
+    name: "calibration_verify_[[mode]]"    
     product: 
-      nb: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/assessment/calibration_verify.{{report_format}}"
+      nb: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/assessment/calibration_verify_[[mode]].{{report_format}}"
     params:
       config_templates: "{{config_templates}}"
       config_root: "{{config_root}}"
@@ -88,9 +89,12 @@ tasks:
     nbconvert_export_kwargs:
         # optionally hide the code from the report
         exclude_input: True            
+    grid:
+      mode: ["x", "xy"]
+
 
   - source: release.py
-    upstream: ["calibration_verify"]
+    upstream: ["calibration_verify_*"]
     product: 
       nb: "{{release_folder}}/index.html"
     params:
@@ -99,4 +103,5 @@ tasks:
       dataset_key: "{{dataset_key}}"      
     nbconvert_export_kwargs:
         # optionally hide the code from the report
-        exclude_input: True            
+        exclude_input: True
+

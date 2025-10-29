@@ -9,6 +9,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 import warnings
 import traceback
+import pickle
 
 
 # + tags=["parameters"]
@@ -20,6 +21,7 @@ test_tags = None
 si_tag = None
 pst_tag = None
 calcite_tag = None
+mode = None
 # -
 
 _config = load_config(os.path.join(config_root, config_templates))
@@ -92,12 +94,20 @@ for key in upstream["spectracal_*"].keys():
     spectra_frame = pd.read_hdf(data_file, key="templates_read")
     df_bkg_substracted = spectra_frame.loc[spectra_frame["background"] == "BACKGROUND_SUBTRACTED"]
     folder_path = upstream["spectracal_*"][key]["calmodels"]
+    folder_path_ycal = upstream["spectracaly_*"][f"spectracaly_{entry}"]["ycalmodels"]
     pkl_files = [file for file in os.listdir(folder_path) if file.endswith(".pkl")]
     for modelfile in pkl_files:
         tags = os.path.basename(modelfile).replace(".pkl", "").split("_")
         optical_path = tags[2]
         laser_wl = int(tags[1])        
-        calmodel = CalibrationModel.from_file(os.path.join(folder_path, modelfile))        
+        calmodel = CalibrationModel.from_file(os.path.join(folder_path, modelfile))
+
+        if mode == "xy":
+            with open(os.path.join(folder_path_ycal, f"ycalmodel_{laser_wl}_{optical_path}.pkl"), "rb") as f:
+                ycalmodel = pickle.load(f)
+        else:
+            ycalmodel = None
+
         op_data = df_bkg_substracted.loc[df_bkg_substracted["optical_path"] == optical_path]
         spe_sum = None
         spe_sil = average_spe(op_data, si_tag).trim_axes(method='x-axis', 
@@ -136,7 +146,14 @@ for key in upstream["spectracal_*"].keys():
                 spe.y = spe.y - np.min(spe.y)
                 # remove baseline
                 spe = spe.subtract_baseline_rc1_snip(niter=40)
-                spe_calibrated = calmodel.apply_calibration_x(spe)
+                # x calibration
+                spe_xcalibrated = calmodel.apply_calibration_x(spe)
+                # y calibration
+                if ycalmodel is None:
+                    spe_calibrated = spe_xcalibrated
+                else:
+                    spe_xcalibrated = spe_xcalibrated.trim_axes(method="x-axis", boundaries=ycalmodel.ref.raman_shift)
+                    spe_calibrated = ycalmodel.process(spe_xcalibrated)
 
                 spe_resampled = spe.resample_spline_filter(
                     x_range=boundaries, xnew_bins=bins, spline=spline)
@@ -146,19 +163,21 @@ for key in upstream["spectracal_*"].keys():
                 spe_cal_resampled = spe_calibrated.resample_spline_filter(
                     x_range=boundaries, xnew_bins=bins, spline=spline)
                 #spe_cal_resampled = spe_cal_resampled.subtract_baseline_rc1_snip(niter=40).normalize(strategy=strategy)
-                spe_cal_resampled = spe_cal_resampled.normalize(
-                    strategy=strategy)
+
 
                 if plot_resampled:
-                    spe_resampled.plot(ax=axis, label=tag)                
-                    spe_cal_resampled.plot(ax=axis, label=f"{tag} x-calibrated", linestyle='--', linewidth=1)
+                    spe_resampled.plot(ax=axis, label=tag)   
+                    spe_cal_resampled.plot(ax=axis, label=f"{tag} {mode}-calibrated", linestyle='--', linewidth=1, color="orange")
                     axis.set_xlabel('Wavenumber/cm⁻¹')
                 else:
                     spe.plot(ax=axis, label=tag)
-                    spe_calibrated.plot(ax=axis, label=f"{tag} x-calibrated", 
+                    spe_calibrated.plot(ax=axis, label=f"{tag} {mode}-calibrated", color="orange", 
                                         linestyle='--', linewidth=1)
                     axis.set_xlabel('Wavenumber/cm⁻¹')
 
+                spe_cal_resampled = spe_cal_resampled.normalize(
+                    strategy=strategy)
+                
                 if tag not in original:
                     original[tag] = {"y": [], "id": []}
                 original[tag]["y"].append(spe_resampled.y)
@@ -173,7 +192,7 @@ for key in upstream["spectracal_*"].keys():
 
 print(upstream["spectracal_*"].keys())
 
-labels = ["original", "x-calibrated"]
+labels = ["original", f"{mode}-calibrated"]
 
 for tag in original:
     id_calibrated = calibrated[tag]["id"]
@@ -184,6 +203,7 @@ for tag in original:
 
     y_original = np.array(original[tag]["y"])
     y_calibrated = np.array(calibrated[tag]["y"])
+    y_calibrated = np.nan_to_num(y_calibrated, nan=0)
     id_original = original[tag]["id"]
     wavelength = original[tag].get("x", np.arange(y_original.shape[1]))  # assume x-values stored here
 

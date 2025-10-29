@@ -9,6 +9,7 @@ from ramanchada2.protocols.calibration.ycalibration import (
 import matplotlib.pyplot as plt
 import traceback
 import pickle
+import warnings
 
 
 # + tags=["parameters"]
@@ -18,6 +19,10 @@ config_root = None
 key = None
 upstream = None
 # -
+
+
+_config = load_config(os.path.join(config_root, config_templates))
+warnings.filterwarnings('ignore')
 
 
 def create_ycal(spe_srm, xcalmodel=None, cert_srm=None, window_length=0):

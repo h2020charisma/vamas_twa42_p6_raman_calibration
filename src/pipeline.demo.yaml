@@ -68,5 +68,5 @@ tasks:
         # optionally hide the code from the report
         exclude_input: True            
     grid:
-      mode: ["x"]
+      mode: ["x", "xy"]
  

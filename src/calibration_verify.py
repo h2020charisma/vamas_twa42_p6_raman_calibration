@@ -27,7 +27,6 @@ mode = None
 _config = load_config(os.path.join(config_root, config_templates))
 warnings.filterwarnings('ignore')
 
-
 def plot_model(calmodel, entry, laser_wl, optical_path, spe_sils=None):
     fig, (ax, ax1, ax2) = plt.subplots(1, 3, figsize=(15, 3))
     # print(modelfile, tags)

@@ -86,6 +86,13 @@ def plot_distances(pairwise_distances, identifiers):
 
 toc_heading(f"Comparison of {mode} calibrated spectra","h1")
 
+toc_heading("Calibration model diagnostics", "h2")
+
+toc_heading("Representative example of a calibration model fit for a given entry, laser wavelength, and optical path.","p")
+toc_heading("(Left panel) shows the individual component fit from the calibration model.","p")
+toc_heading("(Middle panel) displays the Ne peaks (reference and found), with a dashed vertical line marking the fitted silicon (Si) Raman peak position (in nm).","p")
+toc_heading("(Right panel) overlays the Si reference spectrum before and after x-axis calibration, illustrating peak alignment and fit quality.","p")
+
 original = {}
 calibrated = {}
 for key in upstream["spectracal_*"].keys():
@@ -193,6 +200,22 @@ for key in upstream["spectracal_*"].keys():
 
 labels = ["original", f"{mode}-calibrated"]
 
+toc_heading(f"Comparison of spectra before and after {mode}-calibration","h2")
+
+toc_heading("Cosine similarity histograms of spectra","h3")
+
+toc_heading("Distributions of pairwise cosine similarity values computed between spectra within each group (e.g., before and after calibration).","p")
+toc_heading("The top histogram shows similarity among original spectra, and the bottom histogram shows similarity among calibrated spectra.","p")
+toc_heading("Higher similarity (values closer to 1) indicates better spectral alignment and reproducibility.","p")
+toc_heading("Reported summary values (min, median, max) quantify the overall calibration improvement.","p")
+
+toc_heading("Cosine similarity biclustering heatmaps","h3")
+
+toc_heading("Biclustered heatmaps of pairwise cosine similarity matrices for (left) uncalibrated and (right) calibrated spectra.","p")
+toc_heading("Rows and columns represent individual spectra identifiers.","p")
+toc_heading("Clusters along the diagonal highlight groups of spectra that remain internally consistent after calibration.","p")
+toc_heading("Improved block-like clustering patterns indicate enhanced reproducibility and inter-sample spectral alignment.","p")
+
 for tag in original:
     toc_heading(tag, "h2")
     id_calibrated = calibrated[tag]["id"]
@@ -256,6 +279,11 @@ for tag in original:
 
     toc_heading("Spectra overlay plot", "h3")
         # --- spectra overlay plot ---
+
+    toc_heading("Overlay plots of representative spectra for each sample type (e.g., validation, PST, calcite, Si reference).","p")
+    toc_heading("Each subplot shows the raw (solid blue) and calibrated (dashed orange) Raman spectra corresponding to different optical paths or laser wavelengths.","p")
+    toc_heading("Axes: Raman shift (cm⁻¹) on the x-axis; intensity (a.u.) on the y-axis.","p")
+
     plot_spectra_heatmaps(y_original, y_calibrated, wavelength, id_original, tag)
     toc_heading(f"Original vs {mode}-calibrated plots", "h3")
     try:
@@ -283,11 +311,11 @@ for tag in original:
             fig_spec.delaxes(axes[j])
 
         # Shared legend outside
-        #if len(axes) >0:
-        #    handles, labels_ = axes[0].get_legend_handles_labels()
-        #    fig_spec.legend(handles, labels_, loc='upper center', ncol=2, frameon=False)
-        #else:
-        fig_spec.legend()
+        if len(axes) >1 :
+            handles, labels_ = axes[0].get_legend_handles_labels()
+            fig_spec.legend(handles, labels_, loc='upper center', ncol=2, frameon=False)
+        else:
+            fig_spec.legend()
         fig_spec.suptitle(f"{tag}", fontsize=14)
         fig_spec.tight_layout(rect=[0, 0, 1, 0.9])
 

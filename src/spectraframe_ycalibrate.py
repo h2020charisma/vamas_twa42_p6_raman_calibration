@@ -1,16 +1,16 @@
 import pandas as pd
 import os.path
 from pathlib import Path
-from utils import (find_peaks, plot_si_peak, get_config_units, 
-                   load_config, get_config_findkw,
-                   load_calibration_model)
+from utils import (load_config, load_calibration_model)
 from ramanchada2.protocols.calibration.ycalibration import (
-    YCalibrationComponent, YCalibrationCertificate, CertificatesDict)
+    YCalibrationComponent, CertificatesDict)
 import matplotlib.pyplot as plt
 import traceback
 import pickle
 import warnings
-
+from utils import (
+    toc_heading
+    )
 
 # + tags=["parameters"]
 product = None
@@ -24,6 +24,8 @@ upstream = None
 _config = load_config(os.path.join(config_root, config_templates))
 warnings.filterwarnings('ignore')
 
+toc_heading(f"Relative intensity calibration {key}")
+
 
 def create_ycal(spe_srm, xcalmodel=None, cert_srm=None, window_length=0):
     if cert_srm is None:
@@ -34,6 +36,7 @@ def create_ycal(spe_srm, xcalmodel=None, cert_srm=None, window_length=0):
     else:
         srm_calibrated = srm
     if window_length > 0:
+        # smoothing modifies amplitude !
         maxy = max(srm_calibrated.y)
         srm_calibrated = srm_calibrated.smoothing_RC1(
             method="savgol", window_length=window_length, polyorder=3)
@@ -42,7 +45,7 @@ def create_ycal(spe_srm, xcalmodel=None, cert_srm=None, window_length=0):
     return ycal, srm_calibrated
 
 
-def main(df, calmodel_path):
+def main(df, calmodel_path, config):
     certificates = CertificatesDict()
     df_bkg_substracted = df.loc[df["background"] == "BACKGROUND_SUBTRACTED"]
     grouped_df = df_bkg_substracted.groupby(["laser_wl", "optical_path"], dropna=False)
@@ -78,10 +81,10 @@ def main(df, calmodel_path):
             srm_calibrated.plot(ax=axes[0].twinx(),
                                 color='green', fmt='--')
             for index, tag in enumerate(["PST", "APAP"]):
-                axes[index+1].set_title(tag)
                 matching_row = op_data.loc[(op_data["sample"] == tag)]
                 if matching_row.empty:
                     continue
+                axes[index+1].set_title(tag)                
                 spe_to_correct = matching_row["spectrum"].iloc[0]
                 spe_to_correct = spe_to_correct.trim_axes(method="x-axis", boundaries=certs[cert].raman_shift)
                 spe_to_correct.plot(ax=axes[index+1], label='original')
@@ -91,12 +94,12 @@ def main(df, calmodel_path):
                 spe_ycalibrated = ycal.process(spe_to_correct)
                 spe_ycalibrated.plot(ax=axes[index+1].twinx(), fmt='--', color='orange', label='y-calibrated')
 
-Path(product["ycalmodels"]).mkdir(parents=True, exist_ok=True)
 
+Path(product["ycalmodels"]).mkdir(parents=True, exist_ok=True)
 try:
     df = pd.read_hdf(upstream["spectraframe_*"][f"spectraframe_{key}"]["h5"], key="templates_read")
     _config = load_config(os.path.join(config_root, config_templates))
     calmodel_path = upstream["spectracal_*"][f"spectracal_{key}"]["calmodels"]
-    main(df, calmodel_path)
-except Exception as err:
-    print(err)
+    main(df, calmodel_path, _config)
+except Exception:
+    traceback.print_exc()

@@ -10,6 +10,7 @@ product = None
 results_folder = None
 release_folder = None
 dataset_key = None
+enable = None
 # -
 
 
@@ -78,6 +79,8 @@ def make_release(
                 description = "relative intensity calibration"
             elif file.startswith("calmodel"):
                 description = "calibration model"
+            elif file.startswith("ycalmodel"):
+                description = "relative intensity calibration model"                
             link = f"<a href='{rel_file_path}' target='_blank'>{file}</a>"
 
             records.append({
@@ -121,4 +124,5 @@ def make_release(
     display(HTML(header + grouped_html + footer))
 
 
-make_release(results_folder, release_folder, only_if_updated=True, dataset_key=dataset_key, exclude_folders=["processed_False_cluster_pchip"])
+if enable:
+    make_release(results_folder, release_folder, only_if_updated=True, dataset_key=dataset_key, exclude_folders=["processed_False_cluster_pchip"])

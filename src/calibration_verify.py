@@ -175,11 +175,11 @@ for key in upstream["spectracal_*"].keys():
 
                 if plot_resampled:
                     spe_resampled.plot(ax=axis, label=tag)   
-                    spe_cal_resampled.plot(ax=axis, label=f"{tag} {mode}-calibrated", linestyle='--', linewidth=1, color="orange")
+                    spe_cal_resampled.plot(ax=axis.twinx(), label=f"{tag} {mode}-calibrated", linestyle='--', linewidth=1, color="orange")
                     axis.set_xlabel('Wavenumber/cm⁻¹')
                 else:
                     spe.plot(ax=axis, label=tag)
-                    spe_calibrated.plot(ax=axis, label=f"{tag} {mode}-calibrated", color="orange", 
+                    spe_calibrated.plot(ax=axis.twinx(), label=f"{tag} {mode}-calibrated", color="orange", 
                                         linestyle='--', linewidth=1)
                     axis.set_xlabel('Wavenumber/cm⁻¹')
 

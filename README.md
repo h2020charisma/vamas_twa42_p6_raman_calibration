@@ -7,6 +7,30 @@ This repository contains a [Ploomber](https://ploomber.io/)-based analysis pipel
 
 ---
 
+```mermaid
+flowchart TD
+    A[Start: configuration of input raw Raman spectra + metadata] --> B[Settings env.yaml - participants, options]
+    B --> C{For each of the 25 participants}
+    C -->|Participant P6_0101 | D1[spectraframe_load_P6_0101<br>parse + preprocess data]
+    C -->|Provider P6_01201| D2[spectraframe_load_P6_01201<br>parse + preprocess data]
+    C -->|Provider P6_01002| D3[spectraframe_load_P6_01002<br>parse + preprocess data]
+
+    D1 --> E1[spectraframe_calibrate_P6_0101<br>wavenumber calibration]
+    D2 --> E2[spectraframe_calibrate_P6_01201]
+    D3 --> E3[spectraframe_calibrate_P6_01002]
+
+    E1 --> F1[spectraframe_ycalibrate_P6_0101<br>intensity calibration]
+    E2 --> F2[spectraframe_ycalibrate_P6_01201]
+    E3 --> F3[spectraframe_ycalibrate_P6_01002]
+
+    F1 --> G1[Output: calibrated data P6_0101]
+    F2 --> G2[Output: calibrated data P6_01201]
+    F3 --> G3[Output: calibrated data P6_01002]
+
+    G1 & G2 & G3 --> H[calibration_verify<br>compare provider results<br>generate reports & QA]
+    H --> I[Copy the files to the online repo spectra.adma.ai/calibration]
+```
+
 ## 📁 Repository Structure
 
 ```

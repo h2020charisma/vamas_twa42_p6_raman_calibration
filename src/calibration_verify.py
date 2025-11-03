@@ -13,6 +13,7 @@ import pickle
 from utils import (
     toc, toc_anchor, toc_entry, toc_link, toc_heading, toc_collapsible
     )
+import glob
 
 
 # + tags=["parameters"]
@@ -107,14 +108,18 @@ for key in upstream["spectracal_*"].keys():
     for modelfile in pkl_files:
         tags = os.path.basename(modelfile).replace(".pkl", "").split("_")
         optical_path = tags[2]
-        laser_wl = int(tags[1])        
+        laser_wl = int(tags[1])
         calmodel = CalibrationModel.from_file(os.path.join(folder_path, modelfile))
 
         if mode == "xy":
-            with open(os.path.join(folder_path_ycal, f"ycalmodel_{laser_wl}_{optical_path}.pkl"), "rb") as f:
-                ycalmodel = pickle.load(f)
+            pattern = os.path.join(folder_path_ycal, f"ycalmodel_{laser_wl}_{optical_path}_*.pkl")
+            pkl_files = glob.glob(pattern)
+            ycalmodels = []
+            for pkl_file in pkl_files:
+                with open(pkl_file, "rb") as f:
+                    ycalmodels.append(pickle.load(f))
         else:
-            ycalmodel = None
+            ycalmodels = None
 
         op_data = df_bkg_substracted.loc[df_bkg_substracted["optical_path"] == optical_path]
         spe_sum = None
@@ -157,9 +162,10 @@ for key in upstream["spectracal_*"].keys():
                 # x calibration
                 spe_xcalibrated = calmodel.apply_calibration_x(spe)
                 # y calibration
-                if ycalmodel is None:
+                if ycalmodels is None:
                     spe_calibrated = spe_xcalibrated
                 else:
+                    ycalmodel = ycalmodels[0]
                     spe_xcalibrated = spe_xcalibrated.trim_axes(method="x-axis", boundaries=ycalmodel.ref.raman_shift)
                     spe_calibrated = ycalmodel.process(spe_xcalibrated)
 

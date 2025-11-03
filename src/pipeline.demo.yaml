@@ -46,6 +46,8 @@ tasks:
     params:
       config_templates: "{{config_templates}}"
       config_root: "{{config_root}}"
+      pst_tag: "{{pst_tag}}"
+      apap_tag: "{{apap_tag}}"      
     grid:
       key: "{{dataset_key}}"
 

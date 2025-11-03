@@ -18,6 +18,8 @@ config_templates = None
 config_root = None
 key = None
 upstream = None
+pst_tag = None
+apap_tag = None
 # -
 
 
@@ -74,13 +76,13 @@ def main(df, calmodel_path, config):
                 srm_spe, xcalmodel=xcalmodel, cert_srm=certs[cert], window_length=40)
             # save y model
             with open(os.path.join(product["ycalmodels"],
-                                    f"ycalmodel_{laser_wl}_{optical_path}.pkl"), "wb") as f:
+                                    f"ycalmodel_{laser_wl}_{optical_path}_{cert}.pkl"), "wb") as f:
                 pickle.dump(ycal, f)
         
             srm_spe.plot(ax=axes[0].twinx(), label='measured')
             srm_calibrated.plot(ax=axes[0].twinx(),
                                 color='green', fmt='--')
-            for index, tag in enumerate(["PST", "APAP"]):
+            for index, tag in enumerate([pst_tag, apap_tag]):
                 matching_row = op_data.loc[(op_data["sample"] == tag)]
                 if matching_row.empty:
                     continue

@@ -68,6 +68,8 @@ tasks:
     params:
       config_templates: "{{config_templates}}"
       config_root: "{{config_root}}"
+      pst_tag: "{{pst_tag}}"
+      apap_tag: "{{apap_tag}}"
     grid:
       key: "{{calibration_key}}"
       
@@ -101,7 +103,7 @@ tasks:
       results_folder: "{{config_output}}"
       release_folder: "{{release_folder}}"
       dataset_key: "{{dataset_key}}"      
-      enable: True
+      enable: False
     nbconvert_export_kwargs:
         # optionally hide the code from the report
         exclude_input: True

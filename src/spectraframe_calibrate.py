@@ -103,6 +103,7 @@ def main(df, _config, _ne_units):
         try:
             #find_kw = {"wlen": 200, "width": 1}
             find_kw = get_config_findkw(_config, key, "ne")
+            print(find_kw)
             # options for finding peaks    
             fit_peaks_kw = {}
             # options for fitting peaks
@@ -146,6 +147,7 @@ def main(df, _config, _ne_units):
         try:
             fig, (ax, ax1) = plt.subplots(1, 2, figsize=(15, 3))
             find_kw = get_config_findkw(_config, key, "si")
+            print(find_kw)
             # options for finding peaks    
             fit_peaks_kw = {}
             # options for fitting peaks       

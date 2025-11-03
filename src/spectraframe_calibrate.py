@@ -101,7 +101,8 @@ def main(df, _config, _ne_units):
         # these are reference Ne peaks
 
         try:
-            find_kw = {"wlen": 200, "width": 1}
+            #find_kw = {"wlen": 200, "width": 1}
+            find_kw = get_config_findkw(_config, key, "ne")
             # options for finding peaks    
             fit_peaks_kw = {}
             # options for fitting peaks

@@ -21,6 +21,7 @@ neon_tag = None
 si_tag = None
 pst_tag = None
 apap_tag = None
+calcite_tag = None
 fit_neon_peaks = None
 match_mode = None
 interpolator = None
@@ -225,29 +226,26 @@ def main(df, _config, _ne_units):
         if len(fitres) > 0:
             plot_si_peak(spe_sil, spe_test, fitres)
 
-        fig, (ax_pst, ax_apap) = plt.subplots(1, 2, figsize=(15, 3))
-        try:
-            spe_pst = op_data.loc[op_data["sample"] == pst_tag]["spectrum"].iloc[0]
-            spe_pst.y = spe_pst.y - np.min(spe_pst.y)
-            spe_pst_calibrated = calmodel1.apply_calibration_x(spe_pst)
-            spe_pst.plot(label=pst_tag, ax=ax_pst)
-            spe_pst_calibrated.plot(label=f"calibrated {pst_tag}", ax=ax_pst, 
-                                    linestyle='--')
-            ax_pst.grid()
-        except Exception as err:
-            print(err)
+        tags = [pst_tag, apap_tag, calcite_tag]
 
-        try:
-            spe_apap = op_data.loc[op_data["sample"] == apap_tag]["spectrum"].iloc[0]
-            # pedestal
-            spe_apap.y = spe_apap.y - np.min(spe_apap.y)
-            spe_apap_calibrated = calmodel1.apply_calibration_x(spe_apap)
-            spe_apap.plot(label=apap_tag, ax=ax_apap)
-            spe_apap_calibrated.plot(label=f"calibrated {apap_tag}", 
-                                        ax=ax_apap, linestyle='--')
-            ax_apap.grid()
-        except Exception as err:
-            print(err)
+        fig, axes = plt.subplots(1, len(tags), figsize=(7.5 * len(tags), 3))
+
+        # Ensure axes is iterable even if only one tag
+        if len(tags) == 1:
+            axes = [axes]
+
+        for ax, tag in zip(axes, tags):
+            try:
+                spe = op_data.loc[op_data["sample"] == tag, "spectrum"].iloc[0]
+                spe.y = spe.y - np.min(spe.y)
+                spe_cal = calmodel1.apply_calibration_x(spe)
+                spe.plot(label=tag, ax=ax)
+                spe_cal.plot(label=f"calibrated {tag}", ax=ax, linestyle='--')
+                ax.grid()
+                ax.legend()
+                ax.set_title(tag)
+            except Exception as err:
+                print(f"Error processing {tag}: {err}")
 
 
 Path(product["calmodels"]).mkdir(parents=True, exist_ok=True)

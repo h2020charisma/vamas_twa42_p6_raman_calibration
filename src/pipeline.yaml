@@ -44,6 +44,7 @@ tasks:
       si_tag: "{{si_tag}}"
       pst_tag: "{{pst_tag}}"
       apap_tag: "{{apap_tag}}"
+      calcite_tag: "{{calcite_tag}}"
       fit_neon_peaks: "{{fit_ne_peaks}}"
       match_mode: "{{match_mode}}"
       interpolator: "{{interpolator}}"   
@@ -98,7 +99,7 @@ tasks:
   - source: release.py
     upstream: ["calibration_verify_*"]
     product: 
-      nb: "{{config_output}}/release.html"
+      nb: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/assessment/release.html"
     params:
       results_folder: "{{config_output}}"
       release_folder: "{{release_folder}}"

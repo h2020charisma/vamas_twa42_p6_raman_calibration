@@ -98,10 +98,11 @@ tasks:
   - source: release.py
     upstream: ["calibration_verify_*"]
     product: 
-      nb: "{{release_folder}}/index.html"
+      nb: "{{config_output}}/release.html"
     params:
       results_folder: "{{config_output}}"
       release_folder: "{{release_folder}}"
+      processed_folder: "processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}"
       dataset_key: "{{dataset_key}}"      
       enable: False
     nbconvert_export_kwargs:

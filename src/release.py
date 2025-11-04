@@ -9,6 +9,7 @@ import pandas as pd
 product = None
 results_folder = None
 release_folder = None
+processed_folder = None
 dataset_key = None
 enable = None
 # -
@@ -19,7 +20,9 @@ def make_release(
     output_folder,
     only_if_updated=False,
     dataset_key=None,
-    exclude_folders=None
+    processed_folder=None,
+    exclude_folders=None,
+    dryrun=True
 ):
     """
     Recursively copies .html, .ipynb, .pkl, and Excel files from input_folder
@@ -39,7 +42,8 @@ def make_release(
 
     for root, dirs, files in os.walk(input_folder):
         rel_root = os.path.relpath(root, input_folder)
-
+        if rel_root.startswith("processed") and rel_root != processed_folder:
+            continue
         # Skip excluded folders
         if any(part in exclude_folders for part in rel_root.split(os.sep)):
             continue
@@ -61,9 +65,15 @@ def make_release(
                 if os.path.getmtime(src_path) <= os.path.getmtime(dest_path):
                     copy_status = "Unchanged"
                 else:
-                    shutil.copy2(src_path, dest_path)
+                    if dryrun:
+                        print(f"Copy {src_path} to {dest_path}")
+                    else:
+                        shutil.copy2(src_path, dest_path)
             else:
-                shutil.copy2(src_path, dest_path)
+                if dryrun:
+                    print(f"Copy {src_path} to {dest_path}")
+                else:
+                    shutil.copy2(src_path, dest_path)
 
             # Match dataset key anywhere in relative path
             rel_file_path = os.path.normpath(os.path.join(rel_root, file)).replace("\\", "/")
@@ -124,5 +134,11 @@ def make_release(
     display(HTML(header + grouped_html + footer))
 
 
+make_release(results_folder, release_folder, only_if_updated=True, 
+             dataset_key=dataset_key, 
+             processed_folder=processed_folder,
+             exclude_folders=["processed_False_cluster_pchip"],
+             dryrun=not enable)
+
 if enable:
-    make_release(results_folder, release_folder, only_if_updated=True, dataset_key=dataset_key, exclude_folders=["processed_False_cluster_pchip"])
+    shutil.copy2(product["nb"], os.path.join(release_folder, "index.html"))

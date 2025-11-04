@@ -116,8 +116,12 @@ for key in upstream["spectracal_*"].keys():
             pkl_files = glob.glob(pattern)
             ycalmodels = []
             for pkl_file in pkl_files:
+                print(pkl_file)
                 with open(pkl_file, "rb") as f:
                     ycalmodels.append(pickle.load(f))
+            print(f"[{key}] Number of relative intensity calibration models: {len(ycalmodels)}")
+            if len(ycalmodels) == 0:
+                continue
         else:
             ycalmodels = None
 

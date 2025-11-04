@@ -58,8 +58,10 @@ def main(df, calmodel_path, config):
         for cert in certs:
             matching_row = op_data.loc[(op_data["sample"] == cert) | (op_data["sample"] == cert.replace("EL0", "ELO")) ]
             if matching_row.empty:
+                print(f"{laser_wl} {optical_path} {cert} Not Found")
                 continue
-            print(cert)
+            else:
+                print(f"{laser_wl} {optical_path} {cert} Found")
             fig, axes = plt.subplots(1, 3, figsize=(15, 3))
             for i in [0, 1, 2]:
                 axes[i].grid()

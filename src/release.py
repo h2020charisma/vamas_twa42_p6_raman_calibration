@@ -42,7 +42,7 @@ def make_release(
 
     for root, dirs, files in os.walk(input_folder):
         rel_root = os.path.relpath(root, input_folder)
-        if rel_root.startswith("processed") and rel_root != processed_folder:
+        if rel_root.startswith("processed") and not rel_root.startswith(processed_folder):
             continue
         # Skip excluded folders
         if any(part in exclude_folders for part in rel_root.split(os.sep)):

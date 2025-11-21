@@ -40,10 +40,11 @@ def process_neon(spe_neon, neon_wl, title):
     #)
     #calibration_x.plot()
     peaks_df = calibration_x.fit_peaks({}, {}, False)
-    print(title)
+    print(f"{title} peaks {peaks_df.shape[0]}")
     #display(peaks_df)
     ref_keys = np.array(list(reference_peaks.keys()), dtype=float)
-    matched_peaks, matched_refs, pairs = match_peaks_1to1_skip(peaks_df["center"].values, ref_keys, gap_penalty=0.5)
+    
+    matched_peaks, matched_refs, pairs, DP, paths = match_peaks_1to1_skip(peaks_df["center"].values, ref_keys, gap_penalty=0.01)
     print(len(pairs), pairs)
     raw, ref = zip(*pairs)    
     spline = PchipInterpolator(np.array(raw), np.array(ref), extrapolate=False)
@@ -76,6 +77,27 @@ def process_neon(spe_neon, neon_wl, title):
     plt.show()
     fig, (ax, ax1) = plt.subplots(1,2, figsize=(12, 4))
     ax.plot(np.array(raw), np.array(ref), marker='o')
+    plot_dp_with_path(DP, paths, fig, ax1)
+    plt.show()
+
+
+def plot_dp_with_path(DP, path, fig, ax):
+    df = pd.DataFrame(DP)
+
+    cax = ax.imshow(df.values, origin='lower')
+    fig.colorbar(cax, ax=ax, label="Cost")
+
+    # ---- unpack path coordinates ----
+    pi = [p[0] for p in path]
+    pj = [p[1] for p in path]
+
+    # ---- overlay the path ----
+    ax.plot(pj, pi, linewidth=2)
+
+    ax.set_xlabel("Reference index (j)")
+    ax.set_ylabel("Measured index (i)")
+    ax.set_title("DP Cost Matrix with Matched Path")
+
     plt.show()
 
 
@@ -96,6 +118,10 @@ def match_peaks_1to1_skip(measured_pixels, ref_wavelengths, gap_penalty=.5):
     mp_norm = (mp - mp.min()) / (mp.max() - mp.min())
     rw_norm = (rw - rw.min()) / (rw.max() - rw.min())
 
+    k=.75
+    gap_penalty = k * np.median(np.abs(np.diff(rw_norm)))
+    print(f"gap_penalty {gap_penalty}")
+
     n, m = len(mp_norm), len(rw_norm)
     DP = np.full((n+1, m+1), np.inf)
     DP[0,0] = 0
@@ -109,15 +135,21 @@ def match_peaks_1to1_skip(measured_pixels, ref_wavelengths, gap_penalty=.5):
                 DP[i,j] = min(DP[i,j], DP[i,j-1] + gap_penalty)  # skip reference
             if i > 0 and j > 0:
                 cost = abs(mp_norm[i-1] - rw_norm[j-1])         # match cost
+                #cost = (mp_norm[i-1] - rw_norm[j-1])**2
                 DP[i,j] = min(DP[i,j], DP[i-1,j-1] + cost)
 
     # --- Backtrack to get matches ---
     i, j = n, m
     pairs = []
+    path = []
     while i > 0 or j > 0:
         # match
-        if i > 0 and j > 0 and DP[i,j] == DP[i-1,j-1] + abs(mp_norm[i-1] - rw_norm[j-1]):
+        #if i > 0 and j > 0 and DP[i,j] == DP[i-1,j-1] + abs(mp_norm[i-1] - rw_norm[j-1]):
+        cost = abs(mp_norm[i-1] - rw_norm[j-1]) 
+        #cost = (mp_norm[i-1] - rw_norm[j-1])**2
+        if i > 0 and j > 0 and DP[i,j] == DP[i-1,j-1] + cost:
             pairs.append((mp[i-1], rw[j-1]))
+            path.append((i, j))  # DP coordinates
             i -= 1
             j -= 1
         # skip measured
@@ -127,10 +159,13 @@ def match_peaks_1to1_skip(measured_pixels, ref_wavelengths, gap_penalty=.5):
         else:
             j -= 1
 
+    #display(pd.DataFrame(DP))
+    path.append((0, 0))
+    path = path[::-1]
     pairs.reverse()
     mp_out, rw_out = zip(*pairs) if pairs else ([], [])
 
-    return np.array(mp_out), np.array(rw_out), pairs
+    return np.array(mp_out), np.array(rw_out), pairs, DP, path
 
 
 try:

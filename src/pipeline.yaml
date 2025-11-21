@@ -31,6 +31,19 @@ tasks:
     grid:
       key: "{{dataset_key}}"
 
+
+  - source: spectraframe_test.py
+    name: "test"    
+    product: 
+      nb: "{{config_output}}/test.{{report_format}}"
+    upstream: "spectraframe_*"
+    params:
+      config_templates: "{{config_templates}}"
+      config_root: "{{config_root}}"
+      neon_tag: "{{ne_tag}}"
+      key: "{{calibration_key}}"
+
+
   - source: spectraframe_calibrate.py
     name: "spectracal_[[key]]"    
     product: 

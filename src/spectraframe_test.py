@@ -7,12 +7,16 @@ from ramanchada2.protocols.calibration.calibration_model import CalibrationModel
 from ramanchada2.protocols.calibration.xcalibration import LazerZeroingComponent, XCalibrationComponent
 import ramanchada2.misc.constants as rc2const
 from IPython.display import display
-from scipy.interpolate import PchipInterpolator, RBFInterpolator
 import os.path
 import json
 from utils import (get_config_units, load_config)
 from scipy.signal import savgol_filter
 from numpy.polynomial import Polynomial
+from matchpeaks import (
+    match_peaks_1to1_skip, match_peaks_position_intensity,match_peaks_auto_k,
+    match_peaks_ready, 
+    model_fit, model_predict
+)
 
 
 # + tags=["parameters"]
@@ -24,7 +28,10 @@ neon_tag = None
 upstream = None
 should_fit = None
 extrapolate = None
+interpolator = None
 # -
+
+
 
 
 def process_neon(spe_neon, neon_units, neon_wl, title):
@@ -63,18 +70,28 @@ def process_neon(spe_neon, neon_units, neon_wl, title):
     ref_keys = np.array(list(reference_peaks.keys()), dtype=float)
     ref_intensities = np.array(list(reference_peaks.values()), dtype=float)
     ref_intensities = ref_intensities/max(ref_intensities)
-    measured_intensities = peaks_df["amplitude"].values
-    measured_intensities = measured_intensities/max(measured_intensities)
-    matched_peaks, matched_refs, pairs, DP, paths = match_peaks_1to1_skip(
+    measured_intensities = peaks_df["height"].values
+    #measured_intensities = measured_intensities/max(measured_intensities)
+    median_step = np.median(np.diff(np.sort(ref_keys)))
+    tolerance = median_step / (ref_keys.max() - ref_keys.min())    
+    print(f"tolerance {tolerance}")
+    #matched_peaks, matched_refs, pairs, DP, paths = match_peaks_1to1_skip(
+    matched_peaks, matched_refs, pairs, DP, paths, k = match_peaks_ready(
+        
             peaks_df["center"].values, ref_keys,
             # measured_intensities=None, ref_intensities=None,
-            # measured_intensities=measured_intensities, ref_intensities=ref_intensities, 
-            gap_penalty=None, tolerance=1)
+            measured_intensities=measured_intensities,
+            #gap_penalty=None, tolerance=1, beta=0
+            #alpha=.1, tolerance = tolerance
+            normalize = neon_units=="pixel"
+            )
+    print(f"k={k}")
     print(len(pairs), pairs)
     raw, ref = zip(*pairs)    
     try:
         x = np.array(raw) 
-        spline = RBFInterpolator(x[:, None], np.array(ref), kernel="thin_plate_spline", smoothing=1e-3)
+        #spline = RBFInterpolator(x[:, None], np.array(ref), kernel="thin_plate_spline", smoothing=1e-3)
+        spline = model_fit(x, np.array(ref), interpolator, extrapolate)
         #wavelengths_smooth = savgol_filter(np.array(ref), window_length=3, polyorder=2)
         #spline = PchipInterpolator(np.array(raw), wavelengths_smooth, extrapolate=extrapolate)
         #spline = Polynomial.fit(np.array(raw), np.array(ref), deg=3)  # returns a Polynomial object
@@ -82,7 +99,7 @@ def process_neon(spe_neon, neon_units, neon_wl, title):
         #spline1 = RBFInterpolator(np.array(ref), np.array(raw), kernel="thin_plate_spline", smoothing=1e-3)
         #residual = spline1(np.array(ref)) - np.array(raw)
         #spline2 = RBFInterpolator(np.array(raw), residual, kernel="thin_plate_spline", smoothing=1e-3)
-        nm_axis = spline(spe_neon.x[:, None])
+        nm_axis = model_predict(spline, spe_neon.x, interpolator, extrapolate)
         ax1.twinx().plot(nm_axis, spe_neon.y, label="calibrated")    
     except Exception:
         traceback.print_exc()
@@ -116,7 +133,7 @@ def process_neon(spe_neon, neon_units, neon_wl, title):
     fig, (ax, ax1) = plt.subplots(1,2, figsize=(12, 4))
     ax.plot(np.array(raw), np.array(ref), marker='x')
     if spline:
-        ax.plot(spe_neon.x, spline(spe_neon.x[:,None]), color='red', linestyle="dashed")
+        ax.plot(spe_neon.x, model_predict(spline, spe_neon.x, "rbf"), color='red', linestyle="dashed")
     plot_dp_with_path(DP, paths, fig, ax1)
     plt.show()
 
@@ -207,130 +224,6 @@ def match_peaks_1to1_skip_no_intensity(measured_pixels, ref_wavelengths, gap_pen
     path.append((0, 0))
     path = path[::-1]
     pairs.reverse()
-    mp_out, rw_out = zip(*pairs) if pairs else ([], [])
-
-    return np.array(mp_out), np.array(rw_out), pairs, DP, path
-
-
-def match_peaks_1to1_skip(measured_pixels, ref_wavelengths,
-                          measured_intensities=None, ref_intensities=None,
-                          gap_penalty=None, k=0.75, tolerance=0.3,
-                          alpha=1.0, beta=1.0):
-    """
-    Monotonic alignment: one-to-one matches only, skipping allowed.
-    
-    Intensity logic:
-    - Strong peaks get match priority (lower match cost).
-    - Weak peaks are cheap to skip.
-    - Strong peaks are expensive to skip.
-    
-    alpha: controls match weighting strength
-    beta: controls skip penalty inflation for strong peaks
-    """
-
-    mp = np.array(measured_pixels, dtype=float)
-    rw = np.array(ref_wavelengths, dtype=float)
-
-    n, m = len(mp), len(rw)
-
-    # ---- Rough normalization to make distances comparable ----
-    mp_norm = (mp - mp.min()) / (mp.max() - mp.min()) if n > 1 else np.zeros_like(mp)
-    rw_norm = (rw - rw.min()) / (rw.max() - rw.min()) if m > 1 else np.zeros_like(rw)
-
-    # Default gap penalty
-    if gap_penalty is None:
-        gap_penalty = k * np.median(np.abs(np.diff(rw_norm))) if m > 1 else k
-
-    # DP table
-    DP = np.full((n+1, m+1), np.inf)
-    DP[0,0] = 0.0
-
-    # ---- Normalize intensities ----
-    if measured_intensities is not None:
-        mi_norm = np.array(measured_intensities, dtype=float)
-        mi_norm = mi_norm / (mi_norm.max() + 1e-12)
-    if ref_intensities is not None:
-        ri_norm = np.array(ref_intensities, dtype=float)
-        ri_norm = ri_norm / (ri_norm.max() + 1e-12)
-
-    # ---- Dynamic Programming ----
-    for i in range(n+1):
-        for j in range(m+1):
-
-            # ======== skip measured ========
-            if i > 0:
-                gp = gap_penalty
-                if measured_intensities is not None:
-                    gp *= (1 + beta * mi_norm[i-1])     # strong peaks expensive to skip
-                DP[i,j] = min(DP[i,j], DP[i-1,j] + gp)
-
-            # ======== skip reference ========
-            if j > 0:
-                gp = gap_penalty
-                if ref_intensities is not None:
-                    gp *= (1 + beta * ri_norm[j-1])
-                DP[i,j] = min(DP[i,j], DP[i,j-1] + gp)
-
-            # ======== match i,j ========
-            if i > 0 and j > 0:
-                cost = abs(mp_norm[i-1] - rw_norm[j-1])
-                if cost > tolerance:
-                    cost = 1.0  # enforce skip path
-
-                # strong peaks → lower match cost
-                if measured_intensities is not None:
-                    cost /= (1 + alpha * mi_norm[i-1])
-                if ref_intensities is not None:
-                    cost /= (1 + alpha * ri_norm[j-1])
-
-                DP[i,j] = min(DP[i,j], DP[i-1,j-1] + cost)
-
-    # ---- Backtrack ----
-    i, j = n, m
-    pairs = []
-    path = []
-
-    while i > 0 or j > 0:
-
-        # match
-        if i > 0 and j > 0:
-            cost = abs(mp_norm[i-1] - rw_norm[j-1])
-            if cost > tolerance:
-                cost = 1.0
-            if measured_intensities is not None:
-                cost /= (1 + alpha * mi_norm[i-1])
-            if ref_intensities is not None:
-                cost /= (1 + alpha * ri_norm[j-1])
-
-            if DP[i,j] == DP[i-1,j-1] + cost:
-                pairs.append((mp[i-1], rw[j-1]))
-                path.append((i,j))
-                i -= 1
-                j -= 1
-                continue
-
-        # skip measure
-        if i > 0:
-            gp = gap_penalty
-            if measured_intensities is not None:
-                gp *= (1 + beta * mi_norm[i-1])
-            if DP[i,j] == DP[i-1,j] + gp:
-                i -= 1
-                continue
-
-        # skip reference
-        if j > 0:
-            gp = gap_penalty
-            if ref_intensities is not None:
-                gp *= (1 + beta * ri_norm[j-1])
-            if DP[i,j] == DP[i,j-1] + gp:
-                j -= 1
-                continue
-
-    path.append((0,0))
-    path = path[::-1]
-    pairs.reverse()
-
     mp_out, rw_out = zip(*pairs) if pairs else ([], [])
 
     return np.array(mp_out), np.array(rw_out), pairs, DP, path

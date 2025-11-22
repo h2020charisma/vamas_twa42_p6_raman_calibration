@@ -44,6 +44,7 @@ tasks:
       key: "{{calibration_key}}"
       should_fit: False
       extrapolate: False
+      interpolator: "rbf"
 
 
   - source: spectraframe_calibrate.py

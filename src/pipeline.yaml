@@ -42,6 +42,8 @@ tasks:
       config_root: "{{config_root}}"
       neon_tag: "{{ne_tag}}"
       key: "{{calibration_key}}"
+      should_fit: False
+      extrapolate: False
 
 
   - source: spectraframe_calibrate.py

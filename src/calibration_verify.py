@@ -11,7 +11,8 @@ import warnings
 import traceback
 import pickle
 from utils import (
-    toc, toc_anchor, toc_entry, toc_link, toc_heading, toc_collapsible
+    toc, toc_anchor, toc_entry, toc_link, toc_heading, toc_collapsible,
+    get_config_units
     )
 import glob
 
@@ -31,7 +32,7 @@ mode = None
 _config = load_config(os.path.join(config_root, config_templates))
 warnings.filterwarnings('ignore')
 
-def plot_model(calmodel, entry, laser_wl, optical_path, spe_sils=None):
+def plot_model(calmodel, entry, laser_wl, optical_path, spe_sils=None, spe_units=None):
     fig, (ax, ax1, ax2) = plt.subplots(1, 3, figsize=(15, 3))
     # print(modelfile, tags)
     calmodel.components[0].model.plot(ax=ax)
@@ -42,7 +43,7 @@ def plot_model(calmodel, entry, laser_wl, optical_path, spe_sils=None):
     ax1.axvline(x=si_peak, color='black', linestyle='--', linewidth=2, label="Si peak {:.3f} nm".format(si_peak))    
     if spe_sils is not None:
         for spe_sil in spe_sils:
-            sil_calibrated = calmodel.apply_calibration_x(spe_sil)
+            sil_calibrated = calmodel.apply_calibration_x(spe_sil, spe_units=spe_units )
             try:
                 fitres, cand = find_peaks(sil_calibrated,
                                           profile="Pearson4",
@@ -127,11 +128,14 @@ for key in upstream["spectracal_*"].keys():
 
         op_data = df_bkg_substracted.loc[df_bkg_substracted["optical_path"] == optical_path]
         spe_sum = None
-        spe_sil = average_spe(op_data, si_tag).trim_axes(method='x-axis', 
-                                                        boundaries=(520.45-50, 520.45+50))
+        spe_sil = average_spe(op_data, si_tag)
         if spe_sil is None:
             continue
-        plot_model(calmodel, entry, laser_wl, optical_path, [spe_sil])
+        si_units = get_config_units(_config, key, tag="si")
+        if si_units == "cm-1":
+            spe_sil = spe_sil.trim_axes(method='x-axis', boundaries=(520.45-50, 520.45+50))
+
+        plot_model(calmodel, entry, laser_wl, optical_path, [spe_sil],spe_units=si_units )
         fig, (ax, ax1, ax2, ax3) = plt.subplots(1, 4, figsize=(15, 3))
         _id = f"[{entry}] {laser_wl}nm {optical_path}"
         fig.suptitle(_id)

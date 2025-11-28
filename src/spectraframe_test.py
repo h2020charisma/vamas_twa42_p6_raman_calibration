@@ -6,6 +6,7 @@ from matplotlib.lines import Line2D
 from ramanchada2.protocols.calibration.calibration_model import CalibrationModel
 from ramanchada2.protocols.calibration.xcalibration import LazerZeroingComponent, XCalibrationComponent
 import ramanchada2.misc.constants as rc2const
+from ramanchada2.spectrum import Spectrum
 from IPython.display import display
 import os.path
 import json
@@ -25,14 +26,38 @@ config_templates = None
 config_root = None
 key = None
 neon_tag = None
+si_tag = None
 upstream = None
 should_fit = None
 extrapolate = None
 interpolator = None
+enabled = None
 # -
 
 
-
+def process_si(spe_si,  spline, spe_units, laser_wl ):
+    fig, (ax, ax1, ax2) = plt.subplots(3,1, figsize=(12, 6))
+    spe_si.plot(ax=ax, label=si_tag)
+    if spe_units == "cm-1":
+        spe_si = spe_si.trim_axes(method='x-axis', boundaries=(520.45-50, 520.45+50))        
+        spe_si = spe_si.shift_cm_1_to_abs_nm_filter(laser_wave_length_nm=laser_wl )
+        spe_units = "nm"
+    spe_si_necalibrated = Spectrum(model_predict(spline, spe_si.x, interpolator), spe_si.y)
+    spe_si_necalibrated.plot(ax=ax1)
+    find_kw = {"prominence" :
+        spe_si_necalibrated.y_noise_MAD() * 3
+    }
+    calibration_shift = LazerZeroingComponent(
+        laser_wl, spe_si_necalibrated, "nm"
+    )    
+    calibration_shift.derive_model(
+        find_kw=find_kw, fit_peaks_kw={}, should_fit=True, name=""
+    )    
+    print(calibration_shift)
+    spe_si_zero = calibration_shift.process(spe_si_necalibrated)
+    spe_si_zero.plot(ax=ax2)
+    #calibration_shift.plot()
+    return calibration_shift
 
 def process_neon(spe_neon, neon_units, neon_wl, title):
     if neon_units == "cm-1":
@@ -62,19 +87,19 @@ def process_neon(spe_neon, neon_units, neon_wl, title):
     #)
     #calibration_x.plot()
     find_kw = {}
-    find_kw["prominence"] = spe_neon.y_noise_MAD() * 20
+    find_kw["prominence"] = spe_neon.y_noise_MAD() * 3
     peaks_df = calibration_x.fit_peaks(find_kw, {}, should_fit=should_fit)
     peaks_df = peaks_df.sort_values(by="center", ascending=True).reset_index(drop=True)
     print(f"{title} peaks {peaks_df.shape[0]}")
-    display(peaks_df[["center","amplitude","height"]])
+    #display(peaks_df[["center","amplitude","height","fwhm"]])
     ref_keys = np.array(list(reference_peaks.keys()), dtype=float)
     ref_intensities = np.array(list(reference_peaks.values()), dtype=float)
     ref_intensities = ref_intensities/max(ref_intensities)
     measured_intensities = peaks_df["height"].values
     #measured_intensities = measured_intensities/max(measured_intensities)
     median_step = np.median(np.diff(np.sort(ref_keys)))
-    tolerance = median_step / (ref_keys.max() - ref_keys.min())    
-    print(f"tolerance {tolerance}")
+    #tolerance = median_step / (ref_keys.max() - ref_keys.min())    
+    #print(f"tolerance {tolerance}")
     #matched_peaks, matched_refs, pairs, DP, paths = match_peaks_1to1_skip(
     matched_peaks, matched_refs, pairs, DP, paths, k = match_peaks_ready(
         
@@ -82,10 +107,11 @@ def process_neon(spe_neon, neon_units, neon_wl, title):
             # measured_intensities=None, ref_intensities=None,
             measured_intensities=measured_intensities,
             #gap_penalty=None, tolerance=1, beta=0
-            #alpha=.1, tolerance = tolerance
+            #alpha=.1, tolerance = tolerance,
+            gamma=0.1,
             normalize = neon_units=="pixel"
             )
-    print(f"k={k}")
+    #print(f"k={k}")
     print(len(pairs), pairs)
     raw, ref = zip(*pairs)    
     try:
@@ -136,6 +162,7 @@ def process_neon(spe_neon, neon_units, neon_wl, title):
         ax.plot(spe_neon.x, model_predict(spline, spe_neon.x, "rbf"), color='red', linestyle="dashed")
     plot_dp_with_path(DP, paths, fig, ax1)
     plt.show()
+    return spline
 
 
 def plot_dp_with_path(DP, path, fig, ax):
@@ -237,36 +264,49 @@ def load_config(path):
 
 _config = load_config(os.path.join(config_root, config_templates))
 
-try:
-    for key in upstream["spectraframe_*"]:
-        participant =key.replace("spectraframe_","")                    
-        _ne_units = get_config_units(_config, participant, tag="neon")
-        df = pd.read_hdf(upstream["spectraframe_*"][key]["h5"], key="templates_read")
-        df_bkg_substracted = df.loc[df["background"] == "BACKGROUND_SUBTRACTED"]
-        grouped_df = df_bkg_substracted.groupby(["laser_wl", "optical_path"], dropna=False)
-        for group_keys, op_data in grouped_df:
-            laser_wl = group_keys[0]
-            optical_path = group_keys[1]
-            
-            title=f"{participant} {laser_wl} {optical_path}"
-            matching_row = op_data.loc[(op_data["sample"] == neon_tag) & (op_data["overexposed"] == "HDR_MERGE")]
-            if not matching_row.empty:
-                title=f"{participant} {laser_wl} {optical_path} HDR"
-                matching_row["spectrum"]
-            else:
+if enabled:
+    try:
+        for key in upstream["spectraframe_*"]:
+            participant =key.replace("spectraframe_","")                    
+            _ne_units = get_config_units(_config, participant, tag="neon")
+            df = pd.read_hdf(upstream["spectraframe_*"][key]["h5"], key="templates_read")
+            df_bkg_substracted = df.loc[df["background"] == "BACKGROUND_SUBTRACTED"]
+            grouped_df = df_bkg_substracted.groupby(["laser_wl", "optical_path"], dropna=False)
+            for group_keys, op_data in grouped_df:
+                laser_wl = group_keys[0]
+                optical_path = group_keys[1]
+                
                 title=f"{participant} {laser_wl} {optical_path}"
-                matching_row = op_data.loc[op_data["sample"] == neon_tag]
-            if matching_row.empty:
-                print(f"No {neon_tag} in {title}, skipping")
-                continue
+                matching_row = op_data.loc[(op_data["sample"] == neon_tag) & (op_data["overexposed"] == "HDR_MERGE")]
+                if not matching_row.empty:
+                    title=f"{participant} {laser_wl} {optical_path} HDR"
+                    matching_row["spectrum"]
+                else:
+                    title=f"{participant} {laser_wl} {optical_path}"
+                    matching_row = op_data.loc[op_data["sample"] == neon_tag]
+                if matching_row.empty:
+                    print(f"No {neon_tag} in {title}, skipping")
+                    continue
 
-            try:    
-                process_neon(matching_row["spectrum"].iloc[0], _ne_units, laser_wl, title=title)
-            except Exception as err:
-                traceback.print_exc()
-                continue
-    #_config = load_config(os.path.join(config_root, config_templates))
-    #_ne_units = get_config_units(_config, key, tag="neon")
-    #main(df, _config, _ne_units)
-except Exception:
-    traceback.print_exc()
+                try:    
+                    spline = process_neon(matching_row["spectrum"].iloc[0], _ne_units, laser_wl, title=title)
+                except Exception as err:
+                    traceback.print_exc()
+                    continue
+                if not spline:
+                    continue
+                try:
+                    matching_row = op_data.loc[op_data["sample"] == si_tag]
+                    if matching_row.empty:
+                        print(f"No {si_tag} in {title}, skipping")
+                        continue
+                    _si_units = get_config_units(_config, participant, tag="si")
+                    calibration_shift = process_si(matching_row["spectrum"].iloc[0], spline, _si_units, laser_wl)
+                except Exception as err:
+                    traceback.print_exc()
+                    continue
+        #_config = load_config(os.path.join(config_root, config_templates))
+        #_ne_units = get_config_units(_config, key, tag="neon")
+        #main(df, _config, _ne_units)
+    except Exception:
+        traceback.print_exc()

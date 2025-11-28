@@ -41,10 +41,12 @@ tasks:
       config_templates: "{{config_templates}}"
       config_root: "{{config_root}}"
       neon_tag: "{{ne_tag}}"
+      si_tag: "{{si_tag}}"
       key: "{{calibration_key}}"
       should_fit: False
       extrapolate: False
       interpolator: "rbf"
+      enabled: False
 
 
   - source: spectraframe_calibrate.py

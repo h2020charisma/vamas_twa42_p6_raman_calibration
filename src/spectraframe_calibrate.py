@@ -2,6 +2,7 @@ from pathlib import Path
 import pandas as pd
 from ramanchada2.protocols.calibration.calibration_model import CalibrationModel
 import ramanchada2.misc.constants as rc2const
+from ramanchada2.spectrum import Spectrum
 from ramanchada2.misc.utils.ramanshift_to_wavelength import shift_cm_1_to_abs_nm
 import matplotlib.pyplot as plt
 import traceback
@@ -63,7 +64,7 @@ def plot_calibration(model_ne, xmin_nm, xmax_nm, npoints=2000, ax=None):
         print(err)
 
 
-def main(df, _config, _ne_units):
+def main(df, _config, _ne_units, _si_units):
     # now try calibration 
     df_bkg_substracted = df.loc[df["background"] == "BACKGROUND_SUBTRACTED"]
     #print(df_bkg_substracted.shape)
@@ -86,11 +87,16 @@ def main(df, _config, _ne_units):
 
         spe_sil = op_data.loc[op_data["sample"] == si_tag]["spectrum"].iloc[0]
         spe_sil.plot(ax=ax2, label=si_tag)
+        ax2.set_xlabel(_si_units)
 
-        spe_sil = spe_sil.trim_axes(method='x-axis', boundaries=(520.45-100, 520.45+100))
+        if _si_units == "cm-1":
+            spe_sil = spe_sil.trim_axes(method='x-axis', boundaries=(520.45-100, 520.45+100))
+           
+
         # remove pedestal
         spe_sil.y = spe_sil.y - np.min(spe_sil.y)
         spe_sil = spe_sil.subtract_baseline_rc1_snip(niter=40)
+        #spe_sil.plot(label="Si")
              
         spe_neon.plot(ax=ax1, label=neon_tag)
         ax1.set_xlabel(_ne_units)
@@ -131,8 +137,8 @@ def main(df, _config, _ne_units):
             # now derive_model_curve finds peaks, fits peaks, matches peaks and derives the calibration curve
             # and model_neon.process() could be applied to Si or other spectra
             print(model_neon1.model)
-            # calmodel1.plot(ax=ax2)
             model_neon1.model.plot(ax=ax3)
+            plt.show()
             _success = True 
         except Exception:
             _success = False
@@ -153,30 +159,25 @@ def main(df, _config, _ne_units):
             fit_peaks_kw = {}
             # options for fitting peaks       
 
-            if len(spe_sil.x) < 0:
-                offset = (max(spe_sil.x)-min(spe_sil.x))/len(spe_sil.x)
-                offset = offset / 4
-                spe_sil_resampled = spe_sil.resample_spline_filter(
-                    (min(spe_sil.x)+offset, max(spe_sil.x)-offset),
-                    int(len(spe_sil.x)*4/3), spline='akima', cumulative=False)
-            else:
-                spe_sil_resampled = spe_sil
+            spe_sil_resampled = spe_sil
 
             spe_sil_ne_calib = model_neon1.process(
-                spe_sil_resampled, spe_units="cm-1", convert_back=False
+                spe_sil_resampled, spe_units=_si_units, convert_back=False
             )
             spe_sil_ne_calib.plot(ax=ax, label="Si [Ne calibrated only] len={}".
                                 format(len(spe_sil_ne_calib.x)), fmt='+-')
             ax.set_xlabel("Wavelength/nm")
             ax.grid()
+            #ay = ax.twiny()
+            #ay.set_xlabel(_si_units)
+            #spe_sil_resampled.plot(ax = ay, label="original", color="red")
 
-            if _ne_units == "nm":
-                xmin_nm = min(spe_neon.x)
-                xmax_nm = max(spe_neon.x)
-            else:
-                xmin_nm = shift_cm_1_to_abs_nm(min(spe_neon.x), laser_wave_length_nm=laser_wl)
-                xmax_nm = shift_cm_1_to_abs_nm(max(spe_neon.x), laser_wave_length_nm=laser_wl)
-            plot_calibration(model_neon1, xmin_nm, xmax_nm, ax=ax1)
+            ne_calib = model_neon1.process(
+                spe_neon, spe_units=_ne_units, convert_back=False
+            )        
+            # ne_calib.plot(ax=ax1, label="Ne calib")
+            # spe_sil_ne_calib.plot(ax=ax1, label="Si")
+            plot_calibration(model_neon1, min(ne_calib.x), max(ne_calib.x), ax=ax1)
 
             calmodel1.prominence_coeff = 3
             # in case there are nans from the calibration curve extrapolation
@@ -184,6 +185,11 @@ def main(df, _config, _ne_units):
             find_kw["prominence"] = (
                 spe_sil_ne_calib.y_noise_MAD() * calmodel1.prominence_coeff
             )
+            si_peak_nm_left = shift_cm_1_to_abs_nm(520.45-100, laser_wl)
+            si_peak_nm_right = shift_cm_1_to_abs_nm(520.45+100, laser_wl)
+            spe_sil_ne_calib = spe_sil_ne_calib.trim_axes(method='x-axis', boundaries=(si_peak_nm_left, si_peak_nm_right))
+            spe_sil_ne_calib.plot()
+
             model_si = calmodel1.derive_model_zero(
                 spe=spe_sil_ne_calib,
                 ref={520.45: 1},
@@ -212,9 +218,10 @@ def main(df, _config, _ne_units):
             calmodel1.save(os.path.join(product["calmodels"],
                                     f"calmodel_{laser_wl}_{optical_path}.pkl"))
                 
+            calmodel1.plot()      
         # let's check the Si peak with Pearson4 profile
         si_peak = 520.45
-        spe_sil_calibrated = calmodel1.apply_calibration_x(spe_sil)
+        spe_sil_calibrated = calmodel1.apply_calibration_x(spe_sil, spe_units=_si_units)
         has_nan = np.any(np.isnan(spe_sil_calibrated.x))
         _w = 50
         spe_test = spe_sil_calibrated.dropna().trim_axes(method='x-axis', boundaries=(si_peak-_w, si_peak+_w))
@@ -226,19 +233,26 @@ def main(df, _config, _ne_units):
         if len(fitres) > 0:
             plot_si_peak(spe_sil, spe_test, fitres)
 
-        tags = [pst_tag, apap_tag, calcite_tag]
+        tags = [neon_tag, si_tag, pst_tag, apap_tag, calcite_tag]
 
-        fig, axes = plt.subplots(1, len(tags), figsize=(7.5 * len(tags), 3))
 
-        # Ensure axes is iterable even if only one tag
-        if len(tags) == 1:
-            axes = [axes]
+        # Calculate subplot grid dimensions
+        n_plots = len(tags)
+        n_cols = min(3, n_plots)  # Maximum 3 columns
+        n_rows = int(np.ceil(n_plots / n_cols))
 
-        for ax, tag in zip(axes, tags):
+        fig, axes = plt.subplots(n_rows, n_cols, figsize=(6*n_cols, 4*n_rows))
+
+        # Flatten axes array for easy iteration
+        axes = np.array(axes).flatten()
+
+        for idx, (ax, tag) in enumerate(zip(axes[:n_plots], tags)):
             try:
                 spe = op_data.loc[op_data["sample"] == tag, "spectrum"].iloc[0]
                 spe.y = spe.y - np.min(spe.y)
-                spe_cal = calmodel1.apply_calibration_x(spe)
+                spe_cal = calmodel1.apply_calibration_x(
+                    spe, spe_units=get_config_units(_config, key, 
+                                                    tag="si" if tag in ["S0B"] else "ne" if tag in ["Neon"] else tag.lower()))
                 spe.plot(label=tag, ax=ax)
                 spe_cal.plot(label=f"calibrated {tag}", ax=ax, linestyle='--')
                 ax.grid()
@@ -247,6 +261,13 @@ def main(df, _config, _ne_units):
             except Exception as err:
                 print(f"Error processing {tag}: {err}")
 
+        # Hide any unused subplots
+        for idx in range(n_plots, len(axes)):
+            axes[idx].set_visible(False)
+
+        plt.tight_layout()
+        plt.show()
+
 
 Path(product["calmodels"]).mkdir(parents=True, exist_ok=True)
 
@@ -254,6 +275,7 @@ try:
     df = pd.read_hdf(upstream["spectraframe_*"][f"spectraframe_{key}"]["h5"], key="templates_read")
     _config = load_config(os.path.join(config_root, config_templates))
     _ne_units = get_config_units(_config, key, tag="neon")
-    main(df, _config, _ne_units)
+    _si_units = get_config_units(_config, key, tag="si")
+    main(df, _config, _ne_units, _si_units)
 except Exception as err:
     print(err)

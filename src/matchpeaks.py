@@ -320,14 +320,61 @@ def match_peaks_auto_k(measured_pixels, ref_wavelengths,
 def match_peaks_ready(measured_pixels, ref_wavelengths,
                       measured_intensities=None,
                       alpha=1.0, gamma=2.0,
-                      skip_baseline=0.02, tolerance=None, normalize=False):
+                      skip_baseline=0.02, tolerance=None,
+                      normalize=False):
     """
-    Monotonic one-to-one peak alignment with:
-    - Match cost based on normalized position, favoring strong measured peaks nonlinearly
-    - Skip cost depends on measured intensity + optional baseline
-    - Automatic skip weight k
-    - Proper tolerance handling
-    - Sensible defaults for quick use
+    Monotonic one-to-one peak alignment using dynamic programming.
+
+    Aligns measured peaks to reference peaks, allowing skips. 
+    Match cost is based on position differences and favors stronger measured peaks nonlinearly.
+    Skip cost depends on measured peak intensity plus an optional baseline. Positions can be optionally normalized.
+
+    Parameters
+    ----------
+    measured_pixels : array_like
+        Array of measured peak positions (e.g., pixel indices, wavelengths).
+    ref_wavelengths : array_like
+        Array of reference peak positions to align to.
+    measured_intensities : array_like, optional
+        Array of measured peak intensities. Stronger peaks are preferred in matching.
+        Defaults to None, in which case all peaks are treated equally.
+    alpha : float, optional
+        Linear weighting factor for measured peak intensity in match cost. Default is 1.0.
+        Set alpha=0 to ignore intensity.
+    gamma : float, optional
+        Exponent to nonlinearly amplify strong peaks in match cost. Default is 2.0.
+    skip_baseline : float, optional
+        Small constant added to skip cost for all measured peaks to prevent medium peaks
+        from being skipped too cheaply. Default is 0.02.
+    tolerance : float, optional
+        Maximum allowed normalized position difference for a match. Peaks beyond this
+        are penalized. If None, a default based on median reference spacing is used.
+    normalize : bool, optional
+        If True, positions are normalized to [0,1] for scale-independent computation. 
+        Default is False.
+
+    Returns
+    -------
+    mp_out : ndarray
+        Array of measured peaks that were matched to reference peaks.
+    rw_out : ndarray
+        Array of corresponding matched reference peaks.
+    pairs : list of tuples
+        List of matched pairs as (measured_peak, reference_peak).
+    DP : ndarray
+        Dynamic programming table of cumulative costs.
+    path : list of tuples
+        Backtracked path through the DP table showing the sequence of matches and skips.
+    k : float
+        Automatically computed skip weight based on reference spacing.
+
+    Notes
+    -----
+    - The algorithm is monotonic: peaks are matched in order and one-to-one.
+    - Match cost favors strong measured peaks via alpha and gamma.
+    - Skip cost depends only on measured intensity plus optional baseline.
+    - Using normalized positions makes the method scale-independent; set `normalize=True`.
+    - Strong measured peaks are more likely to be matched, while weak/noisy peaks can be skipped.
     """
     mp = np.array(measured_pixels, dtype=float)
     rw = np.array(ref_wavelengths, dtype=float)

@@ -70,9 +70,7 @@ def test_shift(spe):
         return spe
     else:
         spe_shifted = spe.set_new_xaxis(spe.x + test_offset)
-        #ax = spe.plot(label="original")
-        #spe_shifted.plot(ax=ax, label="shifted")
-        print(f"{min(spe.x)}->{min(spe_shifted.x)}")
+        # print(f"{min(spe.x)}->{min(spe_shifted.x)}")
         return spe_shifted
 
 
@@ -90,7 +88,7 @@ def clip_nm_window(spe, win_lo_nm, win_hi_nm):
     # detect no-overlap
     if clip_lo >= clip_hi:
         return spe 
-    return spe.trim_x(method='x-axis',  boundaries=(clip_lo, clip_hi))
+    return spe.trim_axes(method='x-axis',  boundaries=(clip_lo, clip_hi))
 
 def main(df, _config, _ne_units, _si_units, test_offset=0):
     # now try calibration 
@@ -224,8 +222,6 @@ def main(df, _config, _ne_units, _si_units, test_offset=0):
             si_peak_nm_left, si_peak_nm_right = sorted([lo_nm, hi_nm])
             spe_sil_ne_calib = clip_nm_window(spe_sil_ne_calib, si_peak_nm_left, si_peak_nm_right )
 
-            spe_sil_ne_calib.plot()
-            print("spe_sil_ne_calib xy",spe_sil_ne_calib.x, spe_sil_ne_calib.y)
             model_si = calmodel1.derive_model_zero(
                 spe=spe_sil_ne_calib,
                 ref={520.45: 1},

@@ -66,8 +66,10 @@ tasks:
       fit_neon_peaks: "{{fit_ne_peaks}}"
       match_mode: "{{match_mode}}"
       interpolator: "{{interpolator}}"   
+      test_offset: 5
     grid:
       key: "{{calibration_key}}"
+
 
 
   - source: spectraframe_tips.py

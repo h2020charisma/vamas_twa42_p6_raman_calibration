@@ -26,6 +26,7 @@ calcite_tag = None
 fit_neon_peaks = None
 match_mode = None
 interpolator = None
+test_offset = 0
 # -
 
 
@@ -64,7 +65,17 @@ def plot_calibration(model_ne, xmin_nm, xmax_nm, npoints=2000, ax=None):
         print(err)
 
 
-def main(df, _config, _ne_units, _si_units):
+def test_shift(spe):
+    if test_offset == 0:
+        return spe
+    else:
+        spe_shifted = spe.scale_xaxis_fun(fun=lambda x: x + test_offset)
+        ax = spe.plot(label="original")
+        spe_shifted.plot(ax=ax, label="shifted")
+        return spe_shifted
+
+
+def main(df, _config, _ne_units, _si_units, test_offset=0):
     # now try calibration 
     df_bkg_substracted = df.loc[df["background"] == "BACKGROUND_SUBTRACTED"]
     #print(df_bkg_substracted.shape)
@@ -85,7 +96,11 @@ def main(df, _config, _ne_units, _si_units):
         else:
             spe_neon = op_data.loc[op_data["sample"] == neon_tag]["spectrum"].iloc[0]
 
+        spe_neon = test_shift(spe_neon)
+
         spe_sil = op_data.loc[op_data["sample"] == si_tag]["spectrum"].iloc[0]
+        spe_sil = test_shift(spe_sil)
+
         spe_sil.plot(ax=ax2, label=si_tag)
         ax2.set_xlabel(_si_units)
 
@@ -105,6 +120,7 @@ def main(df, _config, _ne_units, _si_units):
         # False should be used for testing only . Fitting may take a while .
 
         neon_wl = rc2const.NEON_WL[laser_wl]
+        print(neon_wl)
         # these are reference Ne peaks
 
         try:
@@ -249,6 +265,7 @@ def main(df, _config, _ne_units, _si_units):
         for idx, (ax, tag) in enumerate(zip(axes[:n_plots], tags)):
             try:
                 spe = op_data.loc[op_data["sample"] == tag, "spectrum"].iloc[0]
+                spe = test_shift(spe)
                 spe.y = spe.y - np.min(spe.y)
                 spe_cal = calmodel1.apply_calibration_x(
                     spe, spe_units=get_config_units(_config, key, 
@@ -276,6 +293,6 @@ try:
     _config = load_config(os.path.join(config_root, config_templates))
     _ne_units = get_config_units(_config, key, tag="neon")
     _si_units = get_config_units(_config, key, tag="si")
-    main(df, _config, _ne_units, _si_units)
+    main(df, _config, _ne_units, _si_units, test_offset)
 except Exception as err:
     print(err)

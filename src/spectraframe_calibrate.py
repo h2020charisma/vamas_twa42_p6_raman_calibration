@@ -69,11 +69,28 @@ def test_shift(spe):
     if test_offset == 0:
         return spe
     else:
-        spe_shifted = spe.scale_xaxis_fun(fun=lambda x: x + test_offset)
-        ax = spe.plot(label="original")
-        spe_shifted.plot(ax=ax, label="shifted")
+        spe_shifted = spe.set_new_xaxis(spe.x + test_offset)
+        #ax = spe.plot(label="original")
+        #spe_shifted.plot(ax=ax, label="shifted")
+        print(f"{min(spe.x)}->{min(spe_shifted.x)}")
         return spe_shifted
 
+
+def clip_nm_window(spe, win_lo_nm, win_hi_nm):
+    # normalize window
+    win_lo, win_hi = sorted([win_lo_nm, win_hi_nm])
+
+    x = spe.x
+    x_lo, x_hi = min(x), max(x)
+
+    # intersection
+    clip_lo = max(win_lo, x_lo)
+    clip_hi = min(win_hi, x_hi)
+
+    # detect no-overlap
+    if clip_lo >= clip_hi:
+        return spe 
+    return spe.trim_x(method='x-axis',  boundaries=(clip_lo, clip_hi))
 
 def main(df, _config, _ne_units, _si_units, test_offset=0):
     # now try calibration 
@@ -201,11 +218,14 @@ def main(df, _config, _ne_units, _si_units, test_offset=0):
             find_kw["prominence"] = (
                 spe_sil_ne_calib.y_noise_MAD() * calmodel1.prominence_coeff
             )
-            si_peak_nm_left = shift_cm_1_to_abs_nm(520.45-100, laser_wl)
-            si_peak_nm_right = shift_cm_1_to_abs_nm(520.45+100, laser_wl)
-            spe_sil_ne_calib = spe_sil_ne_calib.trim_axes(method='x-axis', boundaries=(si_peak_nm_left, si_peak_nm_right))
-            spe_sil_ne_calib.plot()
 
+            lo_nm = shift_cm_1_to_abs_nm(520.45-100, laser_wl)
+            hi_nm = shift_cm_1_to_abs_nm(520.45+100, laser_wl)
+            si_peak_nm_left, si_peak_nm_right = sorted([lo_nm, hi_nm])
+            spe_sil_ne_calib = clip_nm_window(spe_sil_ne_calib, si_peak_nm_left, si_peak_nm_right )
+
+            spe_sil_ne_calib.plot()
+            print("spe_sil_ne_calib xy",spe_sil_ne_calib.x, spe_sil_ne_calib.y)
             model_si = calmodel1.derive_model_zero(
                 spe=spe_sil_ne_calib,
                 ref={520.45: 1},
@@ -276,6 +296,7 @@ def main(df, _config, _ne_units, _si_units, test_offset=0):
                 ax.legend()
                 ax.set_title(tag)
             except Exception as err:
+                traceback.print_exc()
                 print(f"Error processing {tag}: {err}")
 
         # Hide any unused subplots

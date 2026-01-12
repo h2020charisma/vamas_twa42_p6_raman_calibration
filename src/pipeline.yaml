@@ -66,7 +66,7 @@ tasks:
       fit_neon_peaks: "{{fit_ne_peaks}}"
       match_mode: "{{match_mode}}"
       interpolator: "{{interpolator}}"   
-      test_offset: 5
+      test_offset: 0
     grid:
       key: "{{calibration_key}}"
 
@@ -130,3 +130,24 @@ tasks:
         # optionally hide the code from the report
         exclude_input: True
 
+  - source: qmatch.py
+    name: "qmatch_[[key]]"    
+    product: 
+      nb: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/qmatch.{{report_format}}"
+    upstream: "spectraframe_*"      
+    params:
+      config_templates: "{{config_templates}}"
+      config_root: "{{config_root}}"
+      neon_tag: "{{ne_tag}}"
+      si_tag: "{{si_tag}}"
+      pst_tag: "{{pst_tag}}"
+      apap_tag: "{{apap_tag}}"
+      calcite_tag: "{{calcite_tag}}"
+      fit_neon_peaks: "{{fit_ne_peaks}}"
+      match_mode: "{{match_mode}}"
+      interpolator: "{{interpolator}}"   
+      test_offset: 0
+      demo: False
+    grid:
+      key: "{{calibration_key}}"    
+ 

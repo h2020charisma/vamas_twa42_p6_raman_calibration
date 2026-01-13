@@ -12,7 +12,7 @@ from utils import (find_peaks, plot_si_peak, get_config_units,
                    load_config, get_config_findkw)
 import os.path
 from ramanchada2.protocols.calibration.qmatch import (
-    universal_dispersion_calibration
+    universal_dispersion_calibration, diagnose_matching
     )
 
 from ramanchada2.spectrum import Spectrum
@@ -86,7 +86,9 @@ def main(df, _config, _ne_units, _si_units, test_offset=0):
 
         laser_wl = group_keys[0]
         optical_path = group_keys[1]
-        nist_peaks = filter_ref_lines_for_raman(ref_wavelengths=rc2const.ne_peaks_cwa[0],laser_wl_nm=laser_wl)
+        nist_peaks = filter_ref_lines_for_raman(ref_wavelengths=rc2const.ne_peaks_cwa[0],
+                                                laser_wl_nm=laser_wl,
+                                                raman_shift_range_cm_1=(-500, 4000))
 
         print("NIST peaks wl_max range ", min(nist_peaks), max(nist_peaks))
         
@@ -100,13 +102,13 @@ def main(df, _config, _ne_units, _si_units, test_offset=0):
             spe_neon = op_data.loc[op_data["sample"] == neon_tag]["spectrum"].iloc[0]
 
         fig, (ax_spe, ax_cal) = plt.subplots(1,2, figsize=(15, 3))  
-        ax_cal.twinx().vlines(
-        rc2const.ne_peaks_cwa[0],
-        ymin=0,
-        ymax=rc2const.ne_peaks_cwa[2],
-        colors="gray",
-        label="NIST"
-        )    
+        ax_cal.vlines(
+            nist_peaks,
+            ymin=0,
+            ymax=-0.25 * np.max(np.abs(spe_neon.y)),
+            colors="gray",
+            label="NIST"
+        )   
         for offset in [0, 3, 5, 10]:
             fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 5))   
             ax1.set_title(f"{key} {laser_wl}nm {optical_path}  offset{offset}")
@@ -140,7 +142,12 @@ def main(df, _config, _ne_units, _si_units, test_offset=0):
                 spe_pos_dict = cand.get_pos_ampl_dict()        
             measured = list(spe_pos_dict.keys())           
 
-            calibration = universal_dispersion_calibration(measured, nist_peaks)
+            diagnose_matching(np.array(measured), nist_peaks, laser_wl, 
+                              use_quantile_map=_ne_units!="nm" )
+            calibration = universal_dispersion_calibration(np.array(measured), nist_peaks,     
+                                median_limit=None,  # Auto
+                                n_sigma_match=6.0,
+                                use_quantile_map=_ne_units!="nm" )
             plot_pairs_stems(calibration["pairs_inliers"], ax=ax3, label=f"offset {offset} #{len(calibration["pairs_inliers"])}")
             raman_axis = calibration["forward"](spe.x)
 
@@ -208,7 +215,7 @@ if demo:
 
     # known Ne lines (cm⁻1 or nm — doesn't matter)
     ne_lines = rc2const.ne_peaks_cwa[0] #np.array([540.1, 585.2, 614.3, 640.2, 703.2, 724.5, 743.9, 748.8])
-    print(ne_lines)
+
     calibration = universal_dispersion_calibration(pixels, ne_lines)
 
     for key in calibration:

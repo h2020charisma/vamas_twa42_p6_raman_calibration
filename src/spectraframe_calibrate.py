@@ -82,8 +82,8 @@ def clip_nm_window(spe, win_lo_nm, win_hi_nm):
     x_lo, x_hi = min(x), max(x)
 
     # intersection
-    clip_lo = max(win_lo, x_lo)
-    clip_hi = min(win_hi, x_hi)
+    clip_lo = max(win_lo-10, x_lo)
+    clip_hi = min(win_hi+10, x_hi)
 
     # detect no-overlap
     if clip_lo >= clip_hi:

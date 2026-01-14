@@ -1,7 +1,7 @@
 from pathlib import Path
 import pandas as pd
 from ramanchada2.protocols.calibration.calibration_model import CalibrationModel
-from ramanchada2.protocols.calibration.xcalibration import match_peaks
+from ramanchada2.protocols.calibration.xcalibration import match_peaks, fit_peaks
 import ramanchada2.misc.constants as rc2const
 from ramanchada2.misc.utils.ramanshift_to_wavelength import shift_cm_1_to_abs_nm
 import matplotlib.pyplot as plt
@@ -223,13 +223,30 @@ def main(df, _config, _ne_units, _si_units, test_offset=0):
             ne_calib = model_neon1.process(
                 spe_neon, spe_units=_ne_units, convert_back=False
             )        
+            logger.info("Find & match calibrated Ne peaks")
+            ne_fit_res, ne_spe_pos_dict = fit_peaks(
+                ne_calib, find_kw, fit_peaks_kw, profile="Gaussian", should_fit=fit_neon_peaks)
+            logger.info(ne_spe_pos_dict)
+            _x, _ref, _, _, df_ne_calib = match_peaks(
+                ne_spe_pos_dict, neon_wl, spe_units ="nm", match_method=match_mode) 
+
+            df_ne_calib["optical_path"] = optical_path
+            df_ne_calib["laser_wl"] = laser_wl
+            df_ne_calib["before_after"] = "after"
+            display(df_ne_calib)
+            if matched_peaks is None:
+                matched_peaks = df_ne_calib
+            else:
+                matched_peaks = pd.concat([matched_peaks, df_ne_calib])            
+            #elf.spe_pos_dict = spe_pos_dict
+            #self.fit_res = fit_res
+            #return self.fit_res.to_dataframe_peaks()
+
+
             # ne_calib.plot(ax=ax1, label="Ne calib")
             # spe_sil_ne_calib.plot(ax=ax1, label="Si")
             plot_calibration(model_neon1, min(ne_calib.x), max(ne_calib.x), ax=ax1)
-            
-            #x_spe, x_reference, x_distance, cost_matrix, df = match_peaks(
-#
- #           )
+
 
             calmodel1.prominence_coeff = 3
             # in case there are nans from the calibration curve extrapolation
@@ -331,7 +348,7 @@ def main(df, _config, _ne_units, _si_units, test_offset=0):
         plt.show()
     matched_peaks["key"] = key
     matched_peaks["match_mode"] = match_mode
-    matched_peaks["before_after"] = "before"
+
     matched_peaks.to_csv(product["matched_peaks"], index=False)
     
 

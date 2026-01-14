@@ -112,7 +112,7 @@ for key in upstream["spectracal_*"].keys():
     if matched_peaks is None:
         matched_peaks = _matched_peaks
     else:
-        matched_peaks = pd.concat(matched_peaks, _matched_peaks)
+        matched_peaks = pd.concat([matched_peaks, _matched_peaks])
     
     entry = key.replace("spectracal_","")
     key_frame = key.replace("spectracal","spectraframe")
@@ -356,16 +356,17 @@ for tag in original:
 
 try:
     # Run matched peak analyses
-
-    summary = analyze_peak_matching_quality(matched_peaks)
+    mp = matched_peaks.loc[matched_peaks["key"] != "P6_0301"]
+    summary = analyze_peak_matching_quality(mp)
     display(summary)
-    comparison = compare_before_after_calibration(matched_peaks)
+    comparison = compare_before_after_calibration(mp)
     display(comparison)
-    systematic_analysis = analyze_systematic_vs_random_errors(matched_peaks)
+    systematic_analysis = analyze_systematic_vs_random_errors(mp)
     display(systematic_analysis)
     # Visualize
     fig = plot_calibration_analysis(
-        matched_peaks, os.path.join(Path(product["nb"]).parent,'calibration_analysis_comprehensive.png'))
+        mp, os.path.join(Path(product["nb"]).parent,'calibration_analysis_comprehensive.png'))
     plt.show()    
+    matched_peaks.to_csv(product["matched_peaks"], index=False)
 except Exception as err:
     traceback.print_exc()

@@ -204,25 +204,44 @@ def plot_calibration_analysis(df, output_path='calibration_analysis_comprehensiv
     stages = sorted(df_inliers['before_after'].unique())
     n_stages = len(stages)
     
-    # Color palette for stages
-    stage_colors = plt.cm.tab10(np.linspace(0, 1, n_stages))
-    stage_color_map = {stage: stage_colors[i] for i, stage in enumerate(stages)}
+    # Better color palette - more distinct and vibrant colors
+    if n_stages <= 2:
+        # Strong contrast for 2 stages
+        stage_color_map = {stages[0]: '#2E86AB', stages[1]: '#E63946'} if n_stages == 2 else {stages[0]: '#2E86AB'}
+    else:
+        # Use distinct colors from different parts of spectrum
+        colors = ['#2E86AB', '#E63946', '#06A77D', '#F77F00', '#9B59B6', '#E74C3C', '#3498DB', '#2ECC71', '#F39C12', '#E67E22']
+        stage_color_map = {stage: colors[i % len(colors)] for i, stage in enumerate(stages)}
     
-    fig = plt.figure(figsize=(18, 18))
-    gs = fig.add_gridspec(3, 3, hspace=0.3, wspace=0.3)
+    # Calculate number of pairwise comparison plots needed
+    from itertools import combinations
+    stage_pairs = list(combinations(stages, 2))
+    n_pairs = len(stage_pairs)
+    
+    # Adjust figure size based on number of comparison plots
+    if n_pairs > 3:
+        fig_height = 18 + (n_pairs - 3) * 4
+    else:
+        fig_height = 18
+    
+    fig = plt.figure(figsize=(20, fig_height))  # Wider figure
+    
+    # Main plots grid
+    n_rows = 3 + (n_pairs // 3 + (1 if n_pairs % 3 else 0))
+    gs = fig.add_gridspec(n_rows, 3, hspace=0.4, wspace=0.4)  # More space
     
     # Plot 1: Error distribution for all stages
     ax1 = fig.add_subplot(gs[0, 0])
     for stage in stages:
         subset = df_inliers[df_inliers['before_after'] == stage]
         if len(subset) > 0:
-            ax1.hist(subset['error_nm'], bins=50, alpha=0.5, 
-                    label=stage, color=stage_color_map[stage])
-    ax1.axvline(0, color='black', linestyle='--', alpha=0.5)
-    ax1.set_xlabel('Error (nm)')
-    ax1.set_ylabel('Count')
-    ax1.set_title('Error Distribution by Stage')
-    ax1.legend()
+            ax1.hist(subset['error_nm'], bins=50, alpha=0.7, 
+                    label=stage, color=stage_color_map[stage], edgecolor='black', linewidth=0.5)
+    ax1.axvline(0, color='black', linestyle='--', alpha=0.5, linewidth=2)
+    ax1.set_xlabel('Error (nm)', fontsize=11, fontweight='bold')
+    ax1.set_ylabel('Count', fontsize=11, fontweight='bold')
+    ax1.set_title('Error Distribution by Stage', fontsize=12, fontweight='bold')
+    ax1.legend(fontsize=10, loc='best')
     ax1.grid(True, alpha=0.3)
     
     # Plot 2: Absolute error by lab and stage
@@ -230,7 +249,7 @@ def plot_calibration_analysis(df, output_path='calibration_analysis_comprehensiv
     
     lab_paths = sorted(df_inliers['lab_path'].unique())
     x = np.arange(len(lab_paths))
-    width = 0.8 / n_stages  # Divide bar width by number of stages
+    width = 0.8 / n_stages
     
     for i, stage in enumerate(stages):
         stage_data = []
@@ -244,15 +263,16 @@ def plot_calibration_analysis(df, output_path='calibration_analysis_comprehensiv
         
         offset = (i - n_stages/2 + 0.5) * width
         ax2.bar(x + offset, stage_data, width, label=stage, 
-               alpha=0.8, color=stage_color_map[stage])
+               alpha=0.9, color=stage_color_map[stage], edgecolor='black', linewidth=0.5)
     
-    ax2.set_xlabel('Lab_OpticalPath')
-    ax2.set_ylabel('Mean Absolute Error (nm)')
-    ax2.set_title('Calibration Error by Lab/Path')
+    ax2.set_xlabel('Lab_OpticalPath', fontsize=11, fontweight='bold')
+    ax2.set_ylabel('Mean Absolute Error (nm)', fontsize=11, fontweight='bold')
+    ax2.set_title('Calibration Error by Lab/Path', fontsize=12, fontweight='bold')
     ax2.set_xticks(x)
-    ax2.set_xticklabels(lab_paths, rotation=45, ha='right')
-    ax2.legend()
+    ax2.set_xticklabels(lab_paths, rotation=90, ha='center', fontsize=9)  # Vertical rotation
+    ax2.legend(fontsize=10, loc='best')
     ax2.grid(True, alpha=0.3, axis='y')
+    ax2.margins(x=0.02)  # Add small margin
     
     # Plot 3: Error vs reference wavelength
     ax3 = fig.add_subplot(gs[0, 2])
@@ -261,13 +281,13 @@ def plot_calibration_analysis(df, output_path='calibration_analysis_comprehensiv
         subset = df_inliers[df_inliers['before_after'] == stage]
         if len(subset) > 0:
             ax3.scatter(subset['reference'], subset['error_nm'], 
-                       alpha=0.3, s=20, marker=markers[i % len(markers)], 
-                       label=stage, color=stage_color_map[stage])
-    ax3.axhline(0, color='black', linestyle='--', alpha=0.5)
-    ax3.set_xlabel('Reference Wavelength (nm)')
-    ax3.set_ylabel('Error (nm)')
-    ax3.set_title('Error vs Wavelength')
-    ax3.legend()
+                       alpha=0.6, s=30, marker=markers[i % len(markers)], 
+                       label=stage, color=stage_color_map[stage], edgecolors='black', linewidths=0.3)
+    ax3.axhline(0, color='black', linestyle='--', alpha=0.5, linewidth=2)
+    ax3.set_xlabel('Reference Wavelength (nm)', fontsize=11, fontweight='bold')
+    ax3.set_ylabel('Error (nm)', fontsize=11, fontweight='bold')
+    ax3.set_title('Error vs Wavelength', fontsize=12, fontweight='bold')
+    ax3.legend(fontsize=10, loc='best')
     ax3.grid(True, alpha=0.3)
     
     # Plot 4: Mean error per lab (systematic offset)
@@ -285,62 +305,33 @@ def plot_calibration_analysis(df, output_path='calibration_analysis_comprehensiv
             if len(subset) > 0:
                 means.append(subset['error_nm'].mean())
                 stds.append(subset['error_nm'].std())
-                if i == 0:  # Only collect labels once
+                if i == 0:
                     labels_plot.append(lab_path)
         
         if len(means) > 0:
             x = np.arange(len(means))
             offset = (i - n_stages/2 + 0.5) * 0.15
             
-            ax4.errorbar(x + offset, means, yerr=stds, fmt='o', 
-                        capsize=5, label=stage, color=stage_color_map[stage], alpha=0.7)
+            ax4.errorbar(x + offset, means, yerr=stds, fmt='o', markersize=8,
+                        capsize=5, label=stage, color=stage_color_map[stage], 
+                        alpha=0.9, linewidth=2, markeredgecolor='black', markeredgewidth=0.5)
             
             if i == 0:
                 all_labels_plot = labels_plot
     
     if len(all_labels_plot) > 0:
-        ax4.axhline(0, color='black', linestyle='--', alpha=0.5)
-        ax4.set_xlabel('Lab_OpticalPath')
-        ax4.set_ylabel('Mean Error ± Std Dev (nm)')
-        ax4.set_title('Systematic Error per Lab/Path')
+        ax4.axhline(0, color='black', linestyle='--', alpha=0.5, linewidth=2)
+        ax4.set_xlabel('Lab_OpticalPath', fontsize=11, fontweight='bold')
+        ax4.set_ylabel('Mean Error ± Std Dev (nm)', fontsize=11, fontweight='bold')
+        ax4.set_title('Systematic Error per Lab/Path', fontsize=12, fontweight='bold')
         ax4.set_xticks(np.arange(len(all_labels_plot)))
-        ax4.set_xticklabels(all_labels_plot, rotation=45, ha='right')
-        ax4.legend()
+        ax4.set_xticklabels(all_labels_plot, rotation=90, ha='center', fontsize=9)  # Vertical
+        ax4.legend(fontsize=10, loc='best')
         ax4.grid(True, alpha=0.3)
+        ax4.margins(x=0.02)
     
-    # Plot 5: Improvement factor (only if exactly 2 stages)
-    ax5 = fig.add_subplot(gs[2, 0])
-    if n_stages == 2:
-        improvements = []
-        labels_imp = []
-        
-        stage1, stage2 = stages[0], stages[1]
-        
-        for lab_path in sorted(df_inliers['lab_path'].unique()):
-            subset = df_inliers[df_inliers['lab_path'] == lab_path]
-            data1 = subset[subset['before_after'] == stage1]['abs_error_nm']
-            data2 = subset[subset['before_after'] == stage2]['abs_error_nm']
-            
-            if len(data1) > 0 and len(data2) > 0:
-                improvement = (data1.mean() - data2.mean()) / data1.mean() * 100
-                improvements.append(improvement)
-                labels_imp.append(lab_path)
-        
-        if len(improvements) > 0:
-            colors_bar = ['green' if x > 0 else 'red' for x in improvements]
-            ax5.barh(range(len(improvements)), improvements, color=colors_bar, alpha=0.7)
-            ax5.axvline(0, color='black', linestyle='--', alpha=0.5)
-            ax5.set_yticks(range(len(labels_imp)))
-            ax5.set_yticklabels(labels_imp)
-            ax5.set_xlabel('Improvement (%)')
-            ax5.set_title(f'Improvement: {stage1} → {stage2}')
-            ax5.grid(True, alpha=0.3, axis='x')
-    else:
-        ax5.text(0.5, 0.5, 'Improvement plot\nonly for 2 stages', 
-                ha='center', va='center', transform=ax5.transAxes)
-    
-    # Plot 6: Peak count comparison
-    ax6 = fig.add_subplot(gs[2, 1])
+# Plot 5: Peak count comparison (spanning 2 columns in row 2)
+    ax5 = fig.add_subplot(gs[2, 0:2])  # Span columns 0 and 1
     
     lab_paths = sorted(df_inliers['lab_path'].unique())
     x = np.arange(len(lab_paths))
@@ -354,49 +345,130 @@ def plot_calibration_analysis(df, output_path='calibration_analysis_comprehensiv
             counts.append(count)
         
         offset = (i - n_stages/2 + 0.5) * width
-        ax6.bar(x + offset, counts, width, label=stage, 
-               alpha=0.8, color=stage_color_map[stage])
+        ax5.bar(x + offset, counts, width, label=stage, 
+               alpha=0.9, color=stage_color_map[stage], edgecolor='black', linewidth=0.5)
     
-    ax6.set_xlabel('Lab_OpticalPath')
-    ax6.set_ylabel('Number of Peaks')
-    ax6.set_title('Peak Count by Stage')
-    ax6.set_xticks(x)
-    ax6.set_xticklabels(lab_paths, rotation=45, ha='right')
-    ax6.legend()
-    ax6.grid(True, alpha=0.3, axis='y')
+    ax5.set_xlabel('Lab_OpticalPath', fontsize=11, fontweight='bold')
+    ax5.set_ylabel('Number of Peaks', fontsize=11, fontweight='bold')
+    ax5.set_title('Peak Count by Stage', fontsize=12, fontweight='bold')
+    ax5.set_xticks(x)
+    ax5.set_xticklabels(lab_paths, rotation=90, ha='center', fontsize=9)
+    ax5.legend(fontsize=10, loc='best')
+    ax5.grid(True, alpha=0.3, axis='y')
+    ax5.margins(x=0.02)
     
-    # Plot 7: Stage comparison scatter (only if exactly 2 stages)
-    ax7 = fig.add_subplot(gs[2, 2])
-    if n_stages == 2:
-        stage1, stage2 = stages[0], stages[1]
+# Pairwise comparisons: Create all 3 plots for each stage pair
+    for pair_idx, (stage1, stage2) in enumerate(stage_pairs):
+        # Each pair gets 3 plots: improvement, scatter, delta
+        # Calculate starting position for this pair's 3 plots
+        base_plot_idx = pair_idx * 3
         
-        lab_colors = plt.cm.tab10(np.linspace(0, 1, len(df_inliers['lab_path'].unique())))
-        
-        for idx, lab_path in enumerate(sorted(df_inliers['lab_path'].unique())):
-            subset = df_inliers[df_inliers['lab_path'] == lab_path]
-            data1 = subset[subset['before_after'] == stage1]['abs_error_nm'].mean()
-            data2 = subset[subset['before_after'] == stage2]['abs_error_nm'].mean()
+        for plot_type in range(3):  # 0=improvement, 1=scatter, 2=delta
+            plot_idx = base_plot_idx + plot_type
             
-            if not np.isnan(data1) and not np.isnan(data2):
-                ax7.scatter(data1, data2, s=100, alpha=0.7, 
-                           label=lab_path, color=lab_colors[idx])
-        
-        # Add diagonal line (no change)
-        if len(ax7.collections) > 0:
-            max_val = max(ax7.get_xlim()[1], ax7.get_ylim()[1])
-            ax7.plot([0, max_val], [0, max_val], 'k--', alpha=0.5, label='No change')
-        
-        ax7.set_xlabel(f'Mean Abs Error {stage1} (nm)')
-        ax7.set_ylabel(f'Mean Abs Error {stage2} (nm)')
-        ax7.set_title(f'{stage1} vs {stage2}')
-        ax7.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=8)
-        ax7.grid(True, alpha=0.3)
-    else:
-        ax7.text(0.5, 0.5, 'Scatter plot\nonly for 2 stages', 
-                ha='center', va='center', transform=ax7.transAxes)
+            # Calculate grid position
+            if plot_idx == 0:
+                row, col = 2, 2  # First plot at gs[2,2]
+            else:
+                actual_idx = plot_idx - 1
+                row = 3 + (actual_idx // 3)
+                col = actual_idx % 3
+            
+            if plot_type == 0:  # Improvement plot
+                ax = fig.add_subplot(gs[row, col])
+                
+                improvements = []
+                labels_imp = []
+                
+                for lab_path in sorted(df_inliers['lab_path'].unique()):
+                    subset = df_inliers[df_inliers['lab_path'] == lab_path]
+                    data1 = subset[subset['before_after'] == stage1]['abs_error_nm']
+                    data2 = subset[subset['before_after'] == stage2]['abs_error_nm']
+                    
+                    if len(data1) > 0 and len(data2) > 0:
+                        improvement = (data1.mean() - data2.mean()) / data1.mean() * 100
+                        improvements.append(improvement)
+                        labels_imp.append(lab_path)
+                
+                if len(improvements) > 0:
+                    colors_bar = ['#06A77D' if x > 0 else '#E63946' for x in improvements]
+                    ax.barh(range(len(improvements)), improvements, color=colors_bar, 
+                           alpha=0.9, edgecolor='black', linewidth=0.5)
+                    ax.axvline(0, color='black', linestyle='--', alpha=0.5, linewidth=2)
+                    
+                    ax.set_yticks(range(len(labels_imp)))
+                    ax.set_yticklabels(labels_imp, fontsize=8)
+                    ax.set_xlabel('Improvement (%)', fontsize=10, fontweight='bold')
+                    ax.tick_params(axis='x', labelsize=9)
+                    
+                    ax.set_title(f'Improvement: {stage1} → {stage2}', fontsize=11, fontweight='bold')
+                    ax.grid(True, alpha=0.3, axis='x')
+                    ax.margins(y=0.02)
+                    
+                    for i, val in enumerate(improvements):
+                        if abs(val) > 5:
+                            ax.text(val, i, f' {val:.1f}%', 
+                                   va='center', ha='left' if val > 0 else 'right',
+                                   fontsize=7, fontweight='bold')
+            
+            elif plot_type == 1:  # Scatter plot
+                ax = fig.add_subplot(gs[row, col])
+                
+                lab_colors = plt.cm.Set3(np.linspace(0, 1, len(df_inliers['lab_path'].unique())))
+                
+                for idx, lab_path in enumerate(sorted(df_inliers['lab_path'].unique())):
+                    subset = df_inliers[df_inliers['lab_path'] == lab_path]
+                    data1 = subset[subset['before_after'] == stage1]['abs_error_nm'].mean()
+                    data2 = subset[subset['before_after'] == stage2]['abs_error_nm'].mean()
+                    
+                    if not np.isnan(data1) and not np.isnan(data2):
+                        ax.scatter(data1, data2, s=150, alpha=0.8, 
+                                 label=lab_path, color=lab_colors[idx], 
+                                 edgecolors='black', linewidths=1.5)
+                
+                if len(ax.collections) > 0:
+                    max_val = max(ax.get_xlim()[1], ax.get_ylim()[1])
+                    ax.plot([0, max_val], [0, max_val], 'k--', alpha=0.5, linewidth=2, label='No change')
+                
+                ax.set_xlabel(f'{stage1} Error (nm)', fontsize=10, fontweight='bold')
+                ax.set_ylabel(f'{stage2} Error (nm)', fontsize=10, fontweight='bold')
+                ax.set_title(f'{stage1} vs {stage2}', fontsize=11, fontweight='bold')
+                
+                # Smart legend
+                n_labs = len(df_inliers['lab_path'].unique())
+                if n_labs <= 6:
+                    ax.legend(fontsize=8, loc='best', framealpha=0.9)
+                else:
+                    ax.legend(bbox_to_anchor=(1.02, 1), loc='upper left', fontsize=7, framealpha=0.9)
+                
+                ax.grid(True, alpha=0.3)
+            
+            else:  # plot_type == 2: Delta distribution
+                ax = fig.add_subplot(gs[row, col])
+                
+                deltas = []
+                for lab_path in sorted(df_inliers['lab_path'].unique()):
+                    subset = df_inliers[df_inliers['lab_path'] == lab_path]
+                    data1 = subset[subset['before_after'] == stage1]['abs_error_nm']
+                    data2 = subset[subset['before_after'] == stage2]['abs_error_nm']
+                    
+                    if len(data1) > 0 and len(data2) > 0:
+                        deltas.extend((data1.values - data2.values))
+                
+                if len(deltas) > 0:
+                    ax.hist(deltas, bins=30, alpha=0.9, color='#9B59B6', 
+                           edgecolor='black', linewidth=0.5)
+                    ax.axvline(0, color='black', linestyle='--', alpha=0.5, linewidth=2)
+                    ax.axvline(np.mean(deltas), color='#E63946', linestyle='-', 
+                              linewidth=2, label=f'Mean: {np.mean(deltas):.3f}')
+                    ax.set_xlabel('Error Change (nm)', fontsize=10, fontweight='bold')
+                    ax.set_ylabel('Count', fontsize=10, fontweight='bold')
+                    ax.set_title(f'Δ Error: {stage1} → {stage2}', fontsize=11, fontweight='bold')
+                    ax.legend(fontsize=9, loc='best')
+                    ax.grid(True, alpha=0.3)
     
     plt.savefig(output_path, dpi=150, bbox_inches='tight')
-    print("\n📊 Saved: calibration_analysis_comprehensive.png")
+    print(f"\n📊 Saved: {output_path}")
     
     return fig
 

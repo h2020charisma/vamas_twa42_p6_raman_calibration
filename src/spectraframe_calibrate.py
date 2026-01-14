@@ -179,9 +179,10 @@ def main(df, _config, _ne_units, _si_units, test_offset=0):
             logger.info(model_neon1.model)
             model_neon1.model.plot(ax=ax3)
             
+            model_neon1.matched_peaks["sample"] = "Ne"
             model_neon1.matched_peaks["optical_path"] = optical_path
             model_neon1.matched_peaks["laser_wl"] = laser_wl
-            model_neon1.matched_peaks["before_after"] = "before"
+            model_neon1.matched_peaks["before_after"] = "1.original"
             if matched_peaks is None:
                 matched_peaks = model_neon1.matched_peaks
             else:
@@ -230,9 +231,10 @@ def main(df, _config, _ne_units, _si_units, test_offset=0):
             _x, _ref, _, _, df_ne_calib = match_peaks(
                 ne_spe_pos_dict, neon_wl, spe_units ="nm", match_method=match_mode) 
 
+            df_ne_calib["sample"] = "Ne"
             df_ne_calib["optical_path"] = optical_path
             df_ne_calib["laser_wl"] = laser_wl
-            df_ne_calib["before_after"] = "after"
+            df_ne_calib["before_after"] = "2.Ne_clbr"
             display(df_ne_calib)
             if matched_peaks is None:
                 matched_peaks = df_ne_calib

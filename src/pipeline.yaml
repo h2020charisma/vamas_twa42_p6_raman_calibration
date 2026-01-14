@@ -32,23 +32,6 @@ tasks:
       key: "{{dataset_key}}"
 
 
-  - source: spectraframe_test.py
-    name: "test"    
-    product: 
-      nb: "{{config_output}}/test.{{report_format}}"
-    upstream: "spectraframe_*"
-    params:
-      config_templates: "{{config_templates}}"
-      config_root: "{{config_root}}"
-      neon_tag: "{{ne_tag}}"
-      si_tag: "{{si_tag}}"
-      key: "{{calibration_key}}"
-      should_fit: False
-      extrapolate: False
-      interpolator: "rbf"
-      enabled: False
-
-
   - source: spectraframe_calibrate.py
     name: "spectracal_[[key]]"    
     product: 
@@ -101,6 +84,7 @@ tasks:
     name: "calibration_verify_[[mode]]"    
     product: 
       nb: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/assessment/calibration_verify_[[mode]].{{report_format}}"
+      matched_peaks: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/assessment/matched_peaks_[[mode]].csv"
     params:
       config_templates: "{{config_templates}}"
       config_root: "{{config_root}}"

@@ -1,12 +1,19 @@
 from pathlib import Path
 import pandas as pd
 from ramanchada2.protocols.calibration.calibration_model import CalibrationModel
+from ramanchada2.protocols.calibration.xcalibration import match_peaks
 import ramanchada2.misc.constants as rc2const
 from ramanchada2.misc.utils.ramanshift_to_wavelength import shift_cm_1_to_abs_nm
 import matplotlib.pyplot as plt
 import traceback
 from utils import (find_peaks, plot_si_peak, get_config_units, 
                    load_config, get_config_findkw, init_logging)
+from matched_peaks_analysis import (
+    analyze_peak_matching_quality,
+    compare_before_after_calibration,
+    analyze_systematic_vs_random_errors,
+    plot_calibration_analysis
+)
 import os.path
 import numpy as np
 from IPython.display import display
@@ -96,6 +103,7 @@ def main(df, _config, _ne_units, _si_units, test_offset=0):
     df_bkg_substracted = df.loc[df["background"] == "BACKGROUND_SUBTRACTED"]
     #print(df_bkg_substracted.shape)
     grouped_df = df_bkg_substracted.groupby(["laser_wl", "optical_path"], dropna=False)
+    matched_peaks = None
     for group_keys, op_data in grouped_df:
         _success = False
         fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 3)) 
@@ -170,6 +178,14 @@ def main(df, _config, _ne_units, _si_units, test_offset=0):
             # and model_neon.process() could be applied to Si or other spectra
             logger.info(model_neon1.model)
             model_neon1.model.plot(ax=ax3)
+            
+            model_neon1.matched_peaks["optical_path"] = optical_path
+            model_neon1.matched_peaks["laser_wl"] = laser_wl
+            model_neon1.matched_peaks["before_after"] = "before"
+            if matched_peaks is None:
+                matched_peaks = model_neon1.matched_peaks
+            else:
+                matched_peaks = pd.concat([matched_peaks, model_neon1.matched_peaks])
             plt.show()
             _success = True 
         except Exception:
@@ -210,6 +226,10 @@ def main(df, _config, _ne_units, _si_units, test_offset=0):
             # ne_calib.plot(ax=ax1, label="Ne calib")
             # spe_sil_ne_calib.plot(ax=ax1, label="Si")
             plot_calibration(model_neon1, min(ne_calib.x), max(ne_calib.x), ax=ax1)
+            
+            #x_spe, x_reference, x_distance, cost_matrix, df = match_peaks(
+#
+ #           )
 
             calmodel1.prominence_coeff = 3
             # in case there are nans from the calibration curve extrapolation
@@ -309,7 +329,11 @@ def main(df, _config, _ne_units, _si_units, test_offset=0):
 
         plt.tight_layout()
         plt.show()
-
+    matched_peaks["key"] = key
+    matched_peaks["match_mode"] = match_mode
+    matched_peaks["before_after"] = "before"
+    matched_peaks.to_csv(product["matched_peaks"], index=False)
+    
 
 Path(product["calmodels"]).mkdir(parents=True, exist_ok=True)
 
@@ -320,4 +344,21 @@ try:
     _si_units = get_config_units(_config, key, tag="si")
     main(df, _config, _ne_units, _si_units, test_offset)
 except Exception as err:
-    logger.error(err)
+    traceback.print_exc()
+
+try:
+    matched_peaks = pd.read_csv(product["matched_peaks"])
+    # Run analyses
+
+    summary = analyze_peak_matching_quality(matched_peaks)
+    display(summary)
+    comparison = compare_before_after_calibration(matched_peaks)
+    display(comparison)
+    systematic_analysis = analyze_systematic_vs_random_errors(matched_peaks)
+    display(systematic_analysis)
+    # Visualize
+    fig = plot_calibration_analysis(
+        matched_peaks, os.path.join(Path(product["nb"]).parent,'calibration_analysis_comprehensive.png'))
+    plt.show()    
+except Exception as err:
+    traceback.print_exc()

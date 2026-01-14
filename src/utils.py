@@ -14,6 +14,9 @@ import logging
 import sys
 
 
+logger = logging.getLogger(__name__)
+
+
 def load_config(path):
     with open(path, 'r') as file:
         _tmp = json.load(file)
@@ -30,7 +33,7 @@ def get_enabled(key, _config):
 def load_spectrum_df(row):
     fname = row["file_name"]
     if not os.path.isfile(fname):
-        print(f"⚠️ File not found: {fname}")
+        logger.warning(f"⚠️ File not found: {fname}")
         return None        
     else:
         return Spectrum.from_local_file(fname)
@@ -394,7 +397,7 @@ def plot_spectra_heatmaps1(y_original, y_calibrated, wavelength, ids, tag):
 
 
 def load_calibration_model(laser_wl, optical_path, calmodel_path):
-    print("load_calibration_model")
+    logger.info("load_calibration_model")
     pkl_files = [file for file in os.listdir(calmodel_path) if file.endswith(".pkl")]
     for modelfile in pkl_files:
         tags = os.path.basename(modelfile).replace(".pkl", "").split("_")

@@ -10,6 +10,9 @@ import re
 from ramanchada2.protocols.calibration.calibration_model import CalibrationModel
 from ramanchada2.protocols.calibration.ycalibration import (
     YCalibrationComponent, YCalibrationCertificate, CertificatesDict)
+import logging
+import sys
+
 
 def load_config(path):
     with open(path, 'r') as file:
@@ -416,3 +419,29 @@ def create_ycal(spe_srm, xcalmodel=None, cert_srm=None, window_length=0):
         srm_calibrated.y = maxy*srm_calibrated.y/max(srm_calibrated.y)
     ycal = YCalibrationComponent(cert_srm.wavelength, srm_calibrated, cert_srm)
     return ycal, srm_calibrated
+
+
+def init_logging(log_dir, log_file="vamas_p6.log", level=logging.DEBUG):
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log_file = log_dir / log_file
+
+    root = logging.getLogger()
+
+    # HARD reset (critical)
+    root.handlers.clear()
+    root.setLevel(level)
+
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+
+    file_handler = logging.FileHandler(log_file)
+    file_handler.setFormatter(formatter)
+
+    stream_handler = logging.StreamHandler(sys.stdout)
+    stream_handler.setFormatter(formatter)
+
+    root.addHandler(file_handler)
+    root.addHandler(stream_handler)
+
+    return logging.getLogger(__name__)

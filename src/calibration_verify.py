@@ -12,9 +12,10 @@ import traceback
 import pickle
 from utils import (
     toc, toc_anchor, toc_entry, toc_link, toc_heading, toc_collapsible,
-    get_config_units
+    get_config_units, init_logging
     )
 import glob
+from pathlib import Path
 
 
 # + tags=["parameters"]
@@ -29,12 +30,13 @@ calcite_tag = None
 mode = None
 # -
 
+logger = init_logging(Path(product["nb"]).parent , f"calibration_verify_{mode}.log")
 _config = load_config(os.path.join(config_root, config_templates))
 warnings.filterwarnings('ignore')
 
 def plot_model(calmodel, entry, laser_wl, optical_path, spe_sils=None, spe_units=None):
     fig, (ax, ax1, ax2) = plt.subplots(1, 3, figsize=(15, 3))
-    # print(modelfile, tags)
+    logger.debug(f"{modelfile} {tags}")
     calmodel.components[0].model.plot(ax=ax)
     fig.suptitle(f"[{entry}] {laser_wl}nm {optical_path}")
     calmodel.plot(ax=ax1)
@@ -52,7 +54,7 @@ def plot_model(calmodel, entry, laser_wl, optical_path, spe_sils=None, spe_units
                                           )
             except Exception as err:
                 fitres = None
-                print(err)
+                logger.error(err)
             plot_si_peak(spe_sil, sil_calibrated, fitres=fitres, ax=ax2)
 
 
@@ -117,10 +119,10 @@ for key in upstream["spectracal_*"].keys():
             pkl_files = glob.glob(pattern)
             ycalmodels = []
             for pkl_file in pkl_files:
-                print(pkl_file)
+                logger.debug(pkl_file)
                 with open(pkl_file, "rb") as f:
                     ycalmodels.append(pickle.load(f))
-            print(f"[{key}] Number of relative intensity calibration models: {len(ycalmodels)}")
+            logger.debug(f"[{key}] Number of relative intensity calibration models: {len(ycalmodels)}")
             if len(ycalmodels) == 0:
                 continue
         else:
@@ -162,7 +164,7 @@ for key in upstream["spectracal_*"].keys():
                 else:
                     spe = spe.trim_axes(method='x-axis', boundaries=boundaries)
 
-                #print(spe.y_noise_MAD())
+                logger.debug(f"spe.y_noise_MAD() {spe.y_noise_MAD()}")
                 # remove pedestal
                 spe.y = spe.y - np.min(spe.y)
                 # remove baseline
@@ -234,8 +236,7 @@ for tag in original:
     toc_heading(tag, "h2")
     id_calibrated = calibrated[tag]["id"]
     if len(id_calibrated) <= 1:
-        print(f"{tag}: At least 2 optical paths needed to compare calibration results, "
-              f"found {len(id_calibrated)}: {id_calibrated}")
+        logger.warning(f"{tag}: At least 2 optical paths needed to compare calibration results, found {len(id_calibrated)}: {id_calibrated}")
 
     y_original = np.array(original[tag]["y"])
     y_calibrated = np.array(calibrated[tag]["y"])
@@ -244,8 +245,7 @@ for tag in original:
     wavelength = original[tag].get("x", np.arange(y_original.shape[1]))  # assume x-values stored here
 
     if len(y_original) != len(y_calibrated):
-        print(f"Warning: {tag} - different number of spectra "
-              f"(original={len(y_original)}, calibrated={len(y_calibrated)})")
+        logger.warning(f"Warning: {tag} - different number of spectra (original={len(y_original)}, calibrated={len(y_calibrated)})")
 
     ids = [id_original, id_calibrated]
 
@@ -285,10 +285,10 @@ for tag in original:
                                     title=labels[index], ax=ax_biclust)
                     fig.tight_layout(rect=[0, 0, 1, 0.95])  # leave space for title
                 except Exception as e:
-                    print(f"Biclustering plot failed for {tag} ({labels[index]}): {e}")
+                    logger.error(f"Biclustering plot failed for {tag} ({labels[index]}): {e}")
 
             except Exception as e:
-                print(f"Error computing cosine similarity for tag {tag} ({labels[index]}): {e}")
+                logger.error(f"Error computing cosine similarity for tag {tag} ({labels[index]}): {e}")
                 traceback.print_exc()
 
     toc_heading("Spectra overlay plot", "h3")
@@ -336,4 +336,4 @@ for tag in original:
         plt.show()
 
     except Exception as e:
-        print(f"Failed to plot spectra for {tag}: {e}")
+        logger.error(f"Failed to plot spectra for {tag}: {e}")

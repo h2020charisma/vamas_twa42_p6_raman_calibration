@@ -147,7 +147,7 @@ tasks:
       match_mode: "{{match_mode}}"
       interpolator: "{{interpolator}}"   
       test_offset: 0
-      demo: False
+      mode: "qargmin2d" #None # None, "demo" "qargmin2d"
     grid:
-      key: "{{calibration_key}}"    
+      key: ["P6_0301"]    
  

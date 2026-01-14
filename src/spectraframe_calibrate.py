@@ -2,15 +2,14 @@ from pathlib import Path
 import pandas as pd
 from ramanchada2.protocols.calibration.calibration_model import CalibrationModel
 import ramanchada2.misc.constants as rc2const
-from ramanchada2.spectrum import Spectrum
 from ramanchada2.misc.utils.ramanshift_to_wavelength import shift_cm_1_to_abs_nm
 import matplotlib.pyplot as plt
 import traceback
 from utils import (find_peaks, plot_si_peak, get_config_units, 
-                   load_config, get_config_findkw)
+                   load_config, get_config_findkw, init_logging)
 import os.path
 import numpy as np
-
+from IPython.display import display
 
 
 # + tags=["parameters"]
@@ -30,6 +29,8 @@ test_offset = 0
 # -
 
 
+logger = init_logging(Path(product["nb"]).parent , f"spectracal_{key}.log")
+
 def get_calibration_boundaries(model_ne):
     model = model_ne.model
     return (model.x.min(), model.x.max())
@@ -44,7 +45,7 @@ def plot_calibration(model_ne, xmin_nm, xmax_nm, npoints=2000, ax=None):
         is_nonmonotonic = diffs < 0  # True where decreasing     
         nonmonotonic_count = np.count_nonzero(is_nonmonotonic)        
         if np.any(is_nonmonotonic):
-            print(f"*** Number of non-monotonic points: {nonmonotonic_count} ****")
+            logger.debug(f"*** Number of non-monotonic points: {nonmonotonic_count} ****")
 
         # Plot monotonic and non-monotonic segments
         for i in range(len(x_range) - 1):
@@ -62,7 +63,7 @@ def plot_calibration(model_ne, xmin_nm, xmax_nm, npoints=2000, ax=None):
             ax.set_title(f"Number of non-monotonic points: {nonmonotonic_count} ")
         ax.grid()
     except Exception as err:
-        print(err)
+        logger.error(err)
 
 
 def test_shift(spe):
@@ -106,7 +107,7 @@ def main(df, _config, _ne_units, _si_units, test_offset=0):
         # Check if a row with "sample" == "Neon" and "overexposed" == "HDR_MERGE" exists
         matching_row = op_data.loc[(op_data["sample"] == neon_tag) & (op_data["overexposed"] == "HDR_MERGE")]
         if not matching_row.empty:
-            print("Using HDR merge")
+            logger.info("Using HDR merge")
             spe_neon = matching_row["spectrum"].iloc[0]
         else:
             spe_neon = op_data.loc[op_data["sample"] == neon_tag]["spectrum"].iloc[0]
@@ -135,13 +136,13 @@ def main(df, _config, _ne_units, _si_units, test_offset=0):
         # False should be used for testing only . Fitting may take a while .
 
         neon_wl = rc2const.NEON_WL[laser_wl]
-        print(neon_wl)
+        logger.debug(neon_wl)
         # these are reference Ne peaks
 
         try:
             #find_kw = {"wlen": 200, "width": 1}
             find_kw = get_config_findkw(_config, key, "ne")
-            print(find_kw)
+            logger.debug(find_kw)
             # options for finding peaks    
             fit_peaks_kw = {}
             # options for fitting peaks
@@ -167,7 +168,7 @@ def main(df, _config, _ne_units, _si_units, test_offset=0):
             )
             # now derive_model_curve finds peaks, fits peaks, matches peaks and derives the calibration curve
             # and model_neon.process() could be applied to Si or other spectra
-            print(model_neon1.model)
+            logger.info(model_neon1.model)
             model_neon1.model.plot(ax=ax3)
             plt.show()
             _success = True 
@@ -185,7 +186,7 @@ def main(df, _config, _ne_units, _si_units, test_offset=0):
         try:
             fig, (ax, ax1) = plt.subplots(1, 2, figsize=(15, 3))
             find_kw = get_config_findkw(_config, key, "si")
-            print(find_kw)
+            logger.debug(find_kw)
             # options for finding peaks    
             fit_peaks_kw = {}
             # options for fitting peaks       
@@ -235,11 +236,11 @@ def main(df, _config, _ne_units, _si_units, test_offset=0):
                 # profile="Gaussian"
             )
             ax.axvline(x=model_si.model, color='black', linestyle='--', linewidth=2, label="Peak found {:.3f} nm".format(model_si.model))
-            print(model_si)
+            logger.info(model_si)
             model_si.fit_res.plot(ax=ax, label="fitres",  linestyle='--')
             # print("fit_res", model_si.fit_res)
-            print(len(spe_sil_ne_calib.x))
-            print("peaks", model_si.peaks)
+            logger.debug(len(spe_sil_ne_calib.x))
+            display(model_si.peaks)
         except Exception:
             _success = False
             traceback.print_exc()
@@ -254,7 +255,7 @@ def main(df, _config, _ne_units, _si_units, test_offset=0):
         # let's check the Si peak with Pearson4 profile
         si_peak = 520.45
         spe_sil_calibrated = calmodel1.apply_calibration_x(spe_sil, spe_units=_si_units)
-        has_nan = np.any(np.isnan(spe_sil_calibrated.x))
+        #has_nan = np.any(np.isnan(spe_sil_calibrated.x))
         _w = 50
         spe_test = spe_sil_calibrated.dropna().trim_axes(method='x-axis', boundaries=(si_peak-_w, si_peak+_w))
         # print(spe_test.x, spe_test.y)
@@ -280,20 +281,27 @@ def main(df, _config, _ne_units, _si_units, test_offset=0):
 
         for idx, (ax, tag) in enumerate(zip(axes[:n_plots], tags)):
             try:
-                spe = op_data.loc[op_data["sample"] == tag, "spectrum"].iloc[0]
+                spe_match = op_data.loc[op_data["sample"] == tag, "spectrum"]
+                if spe_match.empty:
+                    continue
+                spe = spe_match.iloc[0]
                 spe = test_shift(spe)
                 spe.y = spe.y - np.min(spe.y)
+                spe_units=get_config_units(_config, key, 
+                                                    tag="si" if tag in ["S0B","S0N"] else "ne" if tag in ["Neon"] else tag.lower())
                 spe_cal = calmodel1.apply_calibration_x(
-                    spe, spe_units=get_config_units(_config, key, 
-                                                    tag="si" if tag in ["S0B"] else "ne" if tag in ["Neon"] else tag.lower()))
-                spe.plot(label=tag, ax=ax)
-                spe_cal.plot(label=f"calibrated {tag}", ax=ax, linestyle='--')
+                    spe, spe_units=spe_units)
+                if spe_units == "pixel":
+                    spe.plot(label=f"{tag} [{spe_units}]", ax=ax.twinx())
+                else:
+                    spe.plot(label=tag, ax=ax)
+                spe_cal.plot(label=f"calibrated {tag}", ax=ax, linestyle='--', color="orange")
                 ax.grid()
                 ax.legend()
                 ax.set_title(tag)
             except Exception as err:
                 traceback.print_exc()
-                print(f"Error processing {tag}: {err}")
+                logger.error(f"Error processing {tag}: {err}")
 
         # Hide any unused subplots
         for idx in range(n_plots, len(axes)):
@@ -312,4 +320,4 @@ try:
     _si_units = get_config_units(_config, key, tag="si")
     main(df, _config, _ne_units, _si_units, test_offset)
 except Exception as err:
-    print(err)
+    logger.error(err)

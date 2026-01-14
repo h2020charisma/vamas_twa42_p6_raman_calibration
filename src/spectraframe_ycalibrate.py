@@ -9,7 +9,7 @@ import traceback
 import pickle
 import warnings
 from utils import (
-    toc_heading, get_config_units
+    toc_heading, get_config_units, init_logging
     )
 
 # + tags=["parameters"]
@@ -22,6 +22,8 @@ pst_tag = None
 apap_tag = None
 # -
 
+
+logger = init_logging(Path(product["nb"]).parent , f"spectracaly_{key}.log")
 
 _config = load_config(os.path.join(config_root, config_templates))
 warnings.filterwarnings('ignore')
@@ -58,10 +60,10 @@ def main(df, calmodel_path, config):
         for cert in certs:
             matching_row = op_data.loc[(op_data["sample"] == cert) | (op_data["sample"] == cert.replace("EL0", "ELO")) ]
             if matching_row.empty:
-                print(f"{laser_wl} {optical_path} {cert} Not Found")
+                logger.warning(f"{laser_wl} {optical_path} {cert} Not Found")
                 continue
             else:
-                print(f"{laser_wl} {optical_path} {cert} Found")
+                logger.info(f"{laser_wl} {optical_path} {cert} Found")
             fig, axes = plt.subplots(1, 3, figsize=(15, 3))
             for i in [0, 1, 2]:
                 axes[i].grid()

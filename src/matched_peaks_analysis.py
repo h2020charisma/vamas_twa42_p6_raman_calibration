@@ -357,20 +357,23 @@ def plot_calibration_analysis(df, output_path='calibration_analysis_comprehensiv
     ax5.grid(True, alpha=0.3, axis='y')
     ax5.margins(x=0.02)
     
-# Pairwise comparisons: Create all 3 plots for each stage pair
+# Pairwise comparisons: Create 2 plots for each stage pair (improvement + scatter)
     for pair_idx, (stage1, stage2) in enumerate(stage_pairs):
-        # Each pair gets 3 plots: improvement, scatter, delta
-        # Calculate starting position for this pair's 3 plots
-        base_plot_idx = pair_idx * 3
+        # Each pair gets 2 plots: improvement, scatter
+        # Calculate starting position for this pair's 2 plots
+        base_plot_idx = pair_idx * 2
         
-        for plot_type in range(3):  # 0=improvement, 1=scatter, 2=delta
+        for plot_type in range(2):  # 0=improvement, 1=scatter
             plot_idx = base_plot_idx + plot_type
             
             # Calculate grid position
             if plot_idx == 0:
                 row, col = 2, 2  # First plot at gs[2,2]
+            elif plot_idx == 1:
+                row, col = 3, 0  # Second plot at gs[3,0]
             else:
-                actual_idx = plot_idx - 1
+                # Subsequent pairs fill remaining cells
+                actual_idx = plot_idx - 2
                 row = 3 + (actual_idx // 3)
                 col = actual_idx % 3
             
@@ -411,7 +414,7 @@ def plot_calibration_analysis(df, output_path='calibration_analysis_comprehensiv
                                    va='center', ha='left' if val > 0 else 'right',
                                    fontsize=7, fontweight='bold')
             
-            elif plot_type == 1:  # Scatter plot
+            else:  # plot_type == 1: Scatter plot
                 ax = fig.add_subplot(gs[row, col])
                 
                 lab_colors = plt.cm.Set3(np.linspace(0, 1, len(df_inliers['lab_path'].unique())))
@@ -442,33 +445,8 @@ def plot_calibration_analysis(df, output_path='calibration_analysis_comprehensiv
                     ax.legend(bbox_to_anchor=(1.02, 1), loc='upper left', fontsize=7, framealpha=0.9)
                 
                 ax.grid(True, alpha=0.3)
-            
-            else:  # plot_type == 2: Delta distribution
-                ax = fig.add_subplot(gs[row, col])
-                
-                deltas = []
-                for lab_path in sorted(df_inliers['lab_path'].unique()):
-                    subset = df_inliers[df_inliers['lab_path'] == lab_path]
-                    data1 = subset[subset['before_after'] == stage1]['abs_error_nm']
-                    data2 = subset[subset['before_after'] == stage2]['abs_error_nm']
-                    
-                    if len(data1) > 0 and len(data2) > 0:
-                        deltas.extend((data1.values - data2.values))
-                
-                if len(deltas) > 0:
-                    ax.hist(deltas, bins=30, alpha=0.9, color='#9B59B6', 
-                           edgecolor='black', linewidth=0.5)
-                    ax.axvline(0, color='black', linestyle='--', alpha=0.5, linewidth=2)
-                    ax.axvline(np.mean(deltas), color='#E63946', linestyle='-', 
-                              linewidth=2, label=f'Mean: {np.mean(deltas):.3f}')
-                    ax.set_xlabel('Error Change (nm)', fontsize=10, fontweight='bold')
-                    ax.set_ylabel('Count', fontsize=10, fontweight='bold')
-                    ax.set_title(f'Δ Error: {stage1} → {stage2}', fontsize=11, fontweight='bold')
-                    ax.legend(fontsize=9, loc='best')
-                    ax.grid(True, alpha=0.3)
     
     plt.savefig(output_path, dpi=150, bbox_inches='tight')
-    print(f"\n📊 Saved: {output_path}")
     
     return fig
 

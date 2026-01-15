@@ -84,7 +84,6 @@ tasks:
     name: "calibration_verify_[[mode]]"    
     product: 
       nb: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/assessment/calibration_verify_[[mode]].{{report_format}}"
-      matched_peaks: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/assessment/matched_peaks_[[mode]].csv"
     params:
       config_templates: "{{config_templates}}"
       config_root: "{{config_root}}"
@@ -101,6 +100,21 @@ tasks:
       mode: ["x", "xy"]
 
 
+  - source: calibration_analysis.py
+    upstream: ["spectracal_*"]
+    name: "calibration_analysis"    
+    product: 
+      nb: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/assessment/calibration_analysis_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}.html"
+      matched_peaks: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/assessment/matched_peaks_Ne.csv"
+      analysis: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/assessment/analysis_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}_Ne.png"
+    params:
+      exclude: "P6_0301"
+      context: "Match mode {{match_mode}} Interpolators {{interpolator}} Fit Ne peaks {{fit_ne_peaks}}"
+    nbconvert_export_kwargs:
+        # optionally hide the code from the report
+        exclude_input: True            
+
+
   - source: release.py
     upstream: ["calibration_verify_*"]
     product: 
@@ -110,7 +124,7 @@ tasks:
       release_folder: "{{release_folder}}"
       processed_folder: "processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}"
       dataset_key: "{{dataset_key}}"      
-      enable: False
+      enable: "{{release_enable}}"
     nbconvert_export_kwargs:
         # optionally hide the code from the report
         exclude_input: True

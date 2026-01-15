@@ -16,12 +16,7 @@ from utils import (
     )
 import glob
 from pathlib import Path
-from matched_peaks_analysis import (
-    analyze_peak_matching_quality,
-    compare_before_after_calibration,
-    analyze_systematic_vs_random_errors,
-    plot_calibration_analysis
-)
+
 
 
 # + tags=["parameters"]
@@ -105,14 +100,8 @@ toc_heading("(Right panel) overlays the Si reference spectrum before and after x
 
 original = {}
 calibrated = {}
-matched_peaks = None
+
 for key in upstream["spectracal_*"].keys():
-    matched_peaks_file = upstream["spectracal_*"][key]["matched_peaks"]
-    _matched_peaks = pd.read_csv(matched_peaks_file)
-    if matched_peaks is None:
-        matched_peaks = _matched_peaks
-    else:
-        matched_peaks = pd.concat([matched_peaks, _matched_peaks])
     
     entry = key.replace("spectracal_","")
     key_frame = key.replace("spectracal","spectraframe")
@@ -353,20 +342,3 @@ for tag in original:
     except Exception as e:
         logger.error(f"Failed to plot spectra for {tag}: {e}")
 
-
-try:
-    # Run matched peak analyses
-    mp = matched_peaks.loc[matched_peaks["key"] != "P6_0301"]
-    summary = analyze_peak_matching_quality(mp)
-    display(summary)
-    comparison = compare_before_after_calibration(mp)
-    display(comparison)
-    systematic_analysis = analyze_systematic_vs_random_errors(mp)
-    display(systematic_analysis)
-    # Visualize
-    fig = plot_calibration_analysis(
-        mp, os.path.join(Path(product["nb"]).parent,'calibration_analysis_comprehensive.png'))
-    plt.show()    
-    matched_peaks.to_csv(product["matched_peaks"], index=False)
-except Exception as err:
-    traceback.print_exc()

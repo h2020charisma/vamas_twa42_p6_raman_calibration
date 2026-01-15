@@ -33,3 +33,6 @@ dependencies = [
     "tables~=3.9.2",
 ]
 
+[tool.uv.sources]
+ramanchada2 = { path = "../ramanchada2", editable = true }
+

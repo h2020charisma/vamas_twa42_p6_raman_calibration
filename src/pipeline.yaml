@@ -104,7 +104,7 @@ tasks:
 
 
   - source: calibration_analysis.py
-    upstream: ["spectracal_*"] #, "calibration_verify_xy"]
+    upstream: ["spectracal_*", "calibration_verify_xy"]
     name: "calibration_analysis"    
     product: 
       nb: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/assessment/calibration_analysis_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}.html"
@@ -136,7 +136,7 @@ tasks:
   - source: qmatch.py
     name: "qmatch_[[key]]"    
     product: 
-      nb: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/qmatch.{{report_format}}"
+      nb: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/qmatch.html"
     upstream: "spectraframe_*"      
     params:
       config_templates: "{{config_templates}}"

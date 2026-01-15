@@ -366,11 +366,14 @@ def plot_calibration_analysis(df, units="nm", output_path='calibration_analysis_
     ax5.margins(x=0.02)
     
     # Pairwise comparisons: Create 2 plots for each stage pair (improvement + scatter)
+    print(f"\nGenerating {len(stage_pairs)} pairwise comparisons:")
     for pair_idx, (stage1, stage2) in enumerate(stage_pairs):
+        print(f"  Pair {pair_idx}: {stage1} vs {stage2}")
         # Each pair gets 2 plots: improvement, scatter
         base_plot_idx = pair_idx * 2
         
         for plot_type in range(2):  # 0=improvement, 1=scatter
+
             plot_idx = base_plot_idx + plot_type
             
             # Calculate grid position
@@ -380,10 +383,12 @@ def plot_calibration_analysis(df, units="nm", output_path='calibration_analysis_
                 row, col = 3, 0  # Second plot at gs[3,0]
             else:
                 # Subsequent pairs fill remaining cells
-                actual_idx = plot_idx - 2
+                actual_idx = plot_idx - 1
                 row = 3 + (actual_idx // 3)
                 col = actual_idx % 3
             
+            plot_name = "Improvement" if plot_type == 0 else "Scatter"
+            print(f"    {plot_name}: plot_idx={plot_idx} → gs[{row},{col}]")            
             if plot_type == 0:  # Improvement plot
                 ax = fig.add_subplot(gs[row, col])
                 

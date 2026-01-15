@@ -217,18 +217,26 @@ def plot_calibration_analysis(df, units="nm", output_path='calibration_analysis_
     from itertools import combinations
     stage_pairs = list(combinations(stages, 2))
     n_pairs = len(stage_pairs)
+    n_pairwise_plots = n_pairs * 2  # 2 plots per pair (improvement + scatter)
     
-    # Adjust figure size based on number of comparison plots
-    if n_pairs > 3:
-        fig_height = 18 + (n_pairs - 3) * 4
-    else:
-        fig_height = 18
+    # Calculate grid size
+    # Row 0: 3 plots (error dist, calibration error, error vs wavelength)
+    # Row 1: 1 plot spanning full width (systematic error)
+    # Row 2: 2 plots + first pairwise plot (peak count spans 0:2, improvement at col 2)
+    # Row 3+: remaining pairwise plots (3 per row)
     
-    fig = plt.figure(figsize=(20, fig_height))  # Wider figure
+    # After first pairwise plot at gs[2,2], remaining plots need space
+    remaining_plots = n_pairwise_plots - 1  # -1 because first plot is at gs[2,2]
+    additional_rows = (remaining_plots + 2) // 3  # Ceiling division, 3 plots per row
     
-    # Main plots grid
-    n_rows = 3 + (n_pairs // 3 + (1 if n_pairs % 3 else 0))
-    gs = fig.add_gridspec(n_rows, 3, hspace=0.4, wspace=0.4)  # More space
+    n_rows = 3 + additional_rows
+    
+    # Adjust figure height
+    fig_height = 18 + max(0, additional_rows - 1) * 4
+    
+    fig = plt.figure(figsize=(20, fig_height))
+    
+    gs = fig.add_gridspec(n_rows, 3, hspace=0.4, wspace=0.4)
     
     # Plot 1: Error distribution for all stages
     ax1 = fig.add_subplot(gs[0, 0])
@@ -238,7 +246,7 @@ def plot_calibration_analysis(df, units="nm", output_path='calibration_analysis_
             ax1.hist(subset['error_nm'], bins=50, alpha=0.7, 
                     label=stage, color=stage_color_map[stage], edgecolor='black', linewidth=0.5)
     ax1.axvline(0, color='black', linestyle='--', alpha=0.5, linewidth=2)
-    ax1.set_xlabel('Error (nm)', fontsize=11, fontweight='bold')
+    ax1.set_xlabel(f'Error ({units})', fontsize=11, fontweight='bold')
     ax1.set_ylabel('Count', fontsize=11, fontweight='bold')
     ax1.set_title('Error Distribution by Stage', fontsize=12, fontweight='bold')
     ax1.legend(fontsize=10, loc='best')
@@ -266,13 +274,13 @@ def plot_calibration_analysis(df, units="nm", output_path='calibration_analysis_
                alpha=0.9, color=stage_color_map[stage], edgecolor='black', linewidth=0.5)
     
     ax2.set_xlabel('Lab_OpticalPath', fontsize=11, fontweight='bold')
-    ax2.set_ylabel('Mean Absolute Error (nm)', fontsize=11, fontweight='bold')
+    ax2.set_ylabel(f'Mean Absolute Error ({units})', fontsize=11, fontweight='bold')
     ax2.set_title('Calibration Error by Lab/Path', fontsize=12, fontweight='bold')
     ax2.set_xticks(x)
-    ax2.set_xticklabels(lab_paths, rotation=90, ha='center', fontsize=9)  # Vertical rotation
+    ax2.set_xticklabels(lab_paths, rotation=90, ha='center', fontsize=9)
     ax2.legend(fontsize=10, loc='best')
     ax2.grid(True, alpha=0.3, axis='y')
-    ax2.margins(x=0.02)  # Add small margin
+    ax2.margins(x=0.02)
     
     # Plot 3: Error vs reference wavelength
     ax3 = fig.add_subplot(gs[0, 2])
@@ -284,9 +292,9 @@ def plot_calibration_analysis(df, units="nm", output_path='calibration_analysis_
                        alpha=0.6, s=30, marker=markers[i % len(markers)], 
                        label=stage, color=stage_color_map[stage], edgecolors='black', linewidths=0.3)
     ax3.axhline(0, color='black', linestyle='--', alpha=0.5, linewidth=2)
-    ax3.set_xlabel('Reference ({units})', fontsize=11, fontweight='bold')
-    ax3.set_ylabel('Error ({units})', fontsize=11, fontweight='bold')
-    ax3.set_title('Error vs Reference [{units}]', fontsize=12, fontweight='bold')
+    ax3.set_xlabel(f'Reference ({units})', fontsize=11, fontweight='bold')
+    ax3.set_ylabel(f'Error ({units})', fontsize=11, fontweight='bold')
+    ax3.set_title(f'Error vs Reference', fontsize=12, fontweight='bold')
     ax3.legend(fontsize=10, loc='best')
     ax3.grid(True, alpha=0.3)
     
@@ -309,10 +317,10 @@ def plot_calibration_analysis(df, units="nm", output_path='calibration_analysis_
                     labels_plot.append(lab_path)
         
         if len(means) > 0:
-            x = np.arange(len(means))
+            x_pos = np.arange(len(means))
             offset = (i - n_stages/2 + 0.5) * 0.15
             
-            ax4.errorbar(x + offset, means, yerr=stds, fmt='o', markersize=8,
+            ax4.errorbar(x_pos + offset, means, yerr=stds, fmt='o', markersize=8,
                         capsize=5, label=stage, color=stage_color_map[stage], 
                         alpha=0.9, linewidth=2, markeredgecolor='black', markeredgewidth=0.5)
             
@@ -322,16 +330,16 @@ def plot_calibration_analysis(df, units="nm", output_path='calibration_analysis_
     if len(all_labels_plot) > 0:
         ax4.axhline(0, color='black', linestyle='--', alpha=0.5, linewidth=2)
         ax4.set_xlabel('Lab_OpticalPath', fontsize=11, fontweight='bold')
-        ax4.set_ylabel('Mean Error ± Std Dev ({units})', fontsize=11, fontweight='bold')
+        ax4.set_ylabel(f'Mean Error ± Std Dev ({units})', fontsize=11, fontweight='bold')
         ax4.set_title('Systematic Error per Lab/Path', fontsize=12, fontweight='bold')
         ax4.set_xticks(np.arange(len(all_labels_plot)))
-        ax4.set_xticklabels(all_labels_plot, rotation=90, ha='center', fontsize=9)  # Vertical
+        ax4.set_xticklabels(all_labels_plot, rotation=90, ha='center', fontsize=9)
         ax4.legend(fontsize=10, loc='best')
         ax4.grid(True, alpha=0.3)
         ax4.margins(x=0.02)
     
-# Plot 5: Peak count comparison (spanning 2 columns in row 2)
-    ax5 = fig.add_subplot(gs[2, 0:2])  # Span columns 0 and 1
+    # Plot 5: Peak count comparison (spanning 2 columns in row 2)
+    ax5 = fig.add_subplot(gs[2, 0:2])
     
     lab_paths = sorted(df_inliers['lab_path'].unique())
     x = np.arange(len(lab_paths))
@@ -357,10 +365,9 @@ def plot_calibration_analysis(df, units="nm", output_path='calibration_analysis_
     ax5.grid(True, alpha=0.3, axis='y')
     ax5.margins(x=0.02)
     
-# Pairwise comparisons: Create 2 plots for each stage pair (improvement + scatter)
+    # Pairwise comparisons: Create 2 plots for each stage pair (improvement + scatter)
     for pair_idx, (stage1, stage2) in enumerate(stage_pairs):
         # Each pair gets 2 plots: improvement, scatter
-        # Calculate starting position for this pair's 2 plots
         base_plot_idx = pair_idx * 2
         
         for plot_type in range(2):  # 0=improvement, 1=scatter
@@ -447,6 +454,7 @@ def plot_calibration_analysis(df, units="nm", output_path='calibration_analysis_
                 ax.grid(True, alpha=0.3)
     
     plt.savefig(output_path, dpi=150, bbox_inches='tight')
+    print(f"\n📊 Saved: {output_path}")
     
     return fig
 

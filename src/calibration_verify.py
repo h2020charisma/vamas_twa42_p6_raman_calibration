@@ -48,7 +48,7 @@ def get_reference_peaks(tag):
         "S0N":  {520.45 : 1},
         "S1N":  {520.45 : 1},
         #"PST": {620.9:16, 795.8:10, 1001.4:100,  1031.8:27, 1155.3:13, 1450.5:8,  1583.1:12, 1602.3:28, 2852.4:9, 2904.5:13},
-        #"CAL": {155.21:1, 281.26:1, 711.95:1, 1085.91:1, 1435.22:1, 1748.91:1}
+        "CAL": {155.21:1, 281.26:1, 711.95:1, 1085.91:1, 1435.22:1, 1748.91:1}
     }
     return _lookup_cm1.get(tag, None)
 
@@ -189,7 +189,7 @@ for key in upstream["spectracal_*"].keys():
                 else:
                     spe = spe.trim_axes(method='x-axis', boundaries=boundaries)
 
-                logger.debug(f"spe.y_noise_MAD() {spe.y_noise_MAD()}")
+                logger.debug(f"{entry} {laser_wl} {optical_path} {tag} spe.y_noise_MAD() {spe.y_noise_MAD()}")
                 # remove pedestal
                 spe.y = spe.y - np.min(spe.y)
                 # remove baseline
@@ -216,14 +216,14 @@ for key in upstream["spectracal_*"].keys():
                 if ycalmodels is not None:
                     spe_xcal_resampled = spe_xcalibrated.resample_spline_filter(
                             x_range=boundaries, xnew_bins=bins, spline=spline)                    
-                    _spectra = [spe_resampled, spe_xcalibrated, spe_cal_resampled]
+                    _spectra = [spe, spe_xcalibrated, spe_calibrated]
                     _stages = ["1.original","2.x-clbr","3.y-clbr"]
                 else:
-                    _spectra = [spe_resampled, spe_cal_resampled]
+                    _spectra = [spe, spe_calibrated]
                     _stages = ["1.original","2.x-clbr"]
                 _refs = get_reference_peaks(tag)
                 if _refs is not None:       
-                    logger.info(f"match_peaks4analysis {tag}")             
+                    logger.info(f"{entry} {laser_wl} {optical_path} match_peaks4analysis {tag}")             
                     df_calib = match_peaks4analysis(
                         spectra =_spectra,
                         ref=_refs,                        
@@ -239,7 +239,7 @@ for key in upstream["spectracal_*"].keys():
                     df_calib = None
                     
                 if df_calib is not None:
-                    df_calib["key"] = key
+                    df_calib["key"] = entry
                     df_calib["sample"] = tag
                     df_calib["optical_path"] = optical_path
                     df_calib["laser_wl"] = laser_wl

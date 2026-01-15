@@ -450,18 +450,3 @@ def plot_calibration_analysis(df, output_path='calibration_analysis_comprehensiv
     
     return fig
 
-
-# Usage
-if __name__ == "__main__":
-    # Load your dataframe
-    df = pd.read_csv('peak_matches.csv')
-    
-    # Run analyses
-    summary = analyze_peak_matching_quality(df)
-    comparison = compare_before_after_calibration(df)
-    systematic_analysis = analyze_systematic_vs_random_errors(df)
-    
-    # Visualize
-    fig = plot_calibration_analysis(df)
-    
-    plt.show()

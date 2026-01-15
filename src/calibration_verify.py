@@ -3,6 +3,7 @@ import pandas as pd
 from IPython.display import display
 import matplotlib.pyplot as plt
 from ramanchada2.protocols.calibration.calibration_model import CalibrationModel
+from ramanchada2.protocols.calibration.xcalibration import match_peaks4analysis
 from utils import (find_peaks, plot_si_peak, load_config, unicode_unit,
                    get_config_findkw, plot_biclustering, plot_spectra_heatmaps)
 from sklearn.metrics.pairwise import cosine_similarity
@@ -29,11 +30,30 @@ si_tag = None
 pst_tag = None
 calcite_tag = None
 mode = None
+match_mode = None
+interpolator = None
 # -
 
 logger = init_logging(Path(product["nb"]).parent , f"calibration_verify_{mode}.log")
 _config = load_config(os.path.join(config_root, config_templates))
 warnings.filterwarnings('ignore')
+
+
+def get_reference_peaks(tag):
+    print(tag)
+    _lookup_cm1 = {
+        "Si": {520.45 : 1},
+        "S0B":  {520.45 : 1},
+        "S0P":  {520.45 : 1},
+        "S0N":  {520.45 : 1},
+        "S1N":  {520.45 : 1},
+        #"PST": {620.9:16, 795.8:10, 1001.4:100,  1031.8:27, 1155.3:13, 1450.5:8,  1583.1:12, 1602.3:28, 2852.4:9, 2904.5:13},
+        #"CAL": {155.21:1, 281.26:1, 711.95:1, 1085.91:1, 1435.22:1, 1748.91:1}
+    }
+    return _lookup_cm1.get(tag, None)
+
+def get_profile(tag):
+    return "Pearson4" if tag in ["Si", "S0B", "S0N"] else "Gaussian"
 
 def plot_model(calmodel, entry, laser_wl, optical_path, spe_sils=None, spe_units=None):
     fig, (ax, ax1, ax2) = plt.subplots(1, 3, figsize=(15, 3))
@@ -101,6 +121,7 @@ toc_heading("(Right panel) overlays the Si reference spectrum before and after x
 original = {}
 calibrated = {}
 
+matched_peaks = None
 for key in upstream["spectracal_*"].keys():
     
     entry = key.replace("spectracal_","")
@@ -192,6 +213,37 @@ for key in upstream["spectracal_*"].keys():
                     x_range=boundaries, xnew_bins=bins, spline=spline)
                 #spe_cal_resampled = spe_cal_resampled.subtract_baseline_rc1_snip(niter=40).normalize(strategy=strategy)
 
+                if ycalmodels is not None:
+                    spe_xcal_resampled = spe_xcalibrated.resample_spline_filter(
+                            x_range=boundaries, xnew_bins=bins, spline=spline)                    
+                    _spectra = [spe_resampled, spe_xcalibrated, spe_cal_resampled]
+                    _stages = ["1.original","2.x-clbr","3.y-clbr"]
+                else:
+                    _spectra = [spe_resampled, spe_cal_resampled]
+                    _stages = ["1.original","2.x-clbr"]
+                _refs = get_reference_peaks(tag)
+                if _refs is not None:       
+                    logger.info(f"match_peaks4analysis {tag}")             
+                    df_calib = match_peaks4analysis(
+                        spectra =_spectra,
+                        ref=_refs,                        
+                        spe_units="cm-1",
+                        find_kw={}, 
+                        fit_peaks_kw={}, 
+                        profile=get_profile(tag), 
+                        should_fit=True,
+                        match_method = match_mode,
+                        stages=_stages
+                    )
+                else:
+                    df_calib = None
+                    
+                if df_calib is not None:
+                    df_calib["key"] = key
+                    df_calib["sample"] = tag
+                    df_calib["optical_path"] = optical_path
+                    df_calib["laser_wl"] = laser_wl
+                    matched_peaks = df_calib if matched_peaks is None else pd.concat([matched_peaks, df_calib])
 
                 if plot_resampled:
                     spe_resampled.plot(ax=axis, label=tag)   
@@ -217,6 +269,8 @@ for key in upstream["spectracal_*"].keys():
             except Exception:
                 traceback.print_exc()
             axis.grid()
+
+matched_peaks.to_csv(product["matched_peaks"], index=False)
 
 labels = ["original", f"{mode}-calibrated"]
 

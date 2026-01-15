@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def analyze_peak_matching_quality(df):
+def analyze_peak_matching_quality(df, units="nm"):
     """
     Analyze quality of peak matching across labs and optical paths.
     
@@ -25,8 +25,8 @@ def analyze_peak_matching_quality(df):
     
     # Calculate errors
     df = df.copy()
-    df['error_nm'] = df['spe'] - df['reference']
-    df['abs_error_nm'] = np.abs(df['error_nm'])
+    df[f'error_nm'] = df['spe'] - df['reference']
+    df[f'abs_error_nm'] = np.abs(df['error_nm'])
     
     # Group by lab, optical path, and before/after
     summary_list = []
@@ -66,7 +66,7 @@ def analyze_peak_matching_quality(df):
     return summary_df
 
 
-def compare_before_after_calibration(df):
+def compare_before_after_calibration(df, units="nm"):
     """
     Compare peak positions across calibration stages.
     Works with any number of before_after values.
@@ -139,7 +139,7 @@ def compare_before_after_calibration(df):
     return comparison_df
 
 
-def analyze_systematic_vs_random_errors(df):
+def analyze_systematic_vs_random_errors(df, units="nm"):
     """
     Determine if errors are systematic (consistent across labs) or random.
     Works with any number of before_after values.
@@ -166,16 +166,16 @@ def analyze_systematic_vs_random_errors(df):
         subset = grouped.xs(stage, level='before_after')
         
         print(f"\nStage '{stage}':")
-        print(f"  Mean error across all labs: {subset['mean'].mean():.4f} nm")
-        print(f"  Std dev of mean errors: {subset['mean'].std():.4f} nm")
-        print(f"  Within-lab std dev (avg): {subset['std'].mean():.4f} nm")
+        print(f"  Mean error across all labs: {subset['mean'].mean():.4f} {units}")
+        print(f"  Std dev of mean errors: {subset['mean'].std():.4f} {units}")
+        print(f"  Within-lab std dev (avg): {subset['std'].mean():.4f} {units}")
         
         # Systematic vs random
         between_lab_std = subset['mean'].std()
         within_lab_std = subset['std'].mean()
         
         if between_lab_std < 0.1:
-            print(f"  → SYSTEMATIC: All labs have similar mean error (~{subset['mean'].mean():.3f} nm)")
+            print(f"  → SYSTEMATIC: All labs have similar mean error (~{subset['mean'].mean():.3f} {units})")
         elif between_lab_std < within_lab_std:
             print(f"  → MOSTLY SYSTEMATIC: Between-lab variation < within-lab variation")
         else:
@@ -184,7 +184,7 @@ def analyze_systematic_vs_random_errors(df):
     return grouped
 
 
-def plot_calibration_analysis(df, output_path='calibration_analysis_comprehensive.png'):
+def plot_calibration_analysis(df, units="nm", output_path='calibration_analysis_comprehensive.png'):
     """
     Comprehensive visualization of calibration quality.
     Works with any number of before_after values.
@@ -284,9 +284,9 @@ def plot_calibration_analysis(df, output_path='calibration_analysis_comprehensiv
                        alpha=0.6, s=30, marker=markers[i % len(markers)], 
                        label=stage, color=stage_color_map[stage], edgecolors='black', linewidths=0.3)
     ax3.axhline(0, color='black', linestyle='--', alpha=0.5, linewidth=2)
-    ax3.set_xlabel('Reference Wavelength (nm)', fontsize=11, fontweight='bold')
-    ax3.set_ylabel('Error (nm)', fontsize=11, fontweight='bold')
-    ax3.set_title('Error vs Wavelength', fontsize=12, fontweight='bold')
+    ax3.set_xlabel('Reference ({units})', fontsize=11, fontweight='bold')
+    ax3.set_ylabel('Error ({units})', fontsize=11, fontweight='bold')
+    ax3.set_title('Error vs Reference [{units}]', fontsize=12, fontweight='bold')
     ax3.legend(fontsize=10, loc='best')
     ax3.grid(True, alpha=0.3)
     
@@ -322,7 +322,7 @@ def plot_calibration_analysis(df, output_path='calibration_analysis_comprehensiv
     if len(all_labels_plot) > 0:
         ax4.axhline(0, color='black', linestyle='--', alpha=0.5, linewidth=2)
         ax4.set_xlabel('Lab_OpticalPath', fontsize=11, fontweight='bold')
-        ax4.set_ylabel('Mean Error ± Std Dev (nm)', fontsize=11, fontweight='bold')
+        ax4.set_ylabel('Mean Error ± Std Dev ({units})', fontsize=11, fontweight='bold')
         ax4.set_title('Systematic Error per Lab/Path', fontsize=12, fontweight='bold')
         ax4.set_xticks(np.arange(len(all_labels_plot)))
         ax4.set_xticklabels(all_labels_plot, rotation=90, ha='center', fontsize=9)  # Vertical
@@ -433,8 +433,8 @@ def plot_calibration_analysis(df, output_path='calibration_analysis_comprehensiv
                     max_val = max(ax.get_xlim()[1], ax.get_ylim()[1])
                     ax.plot([0, max_val], [0, max_val], 'k--', alpha=0.5, linewidth=2, label='No change')
                 
-                ax.set_xlabel(f'{stage1} Error (nm)', fontsize=10, fontweight='bold')
-                ax.set_ylabel(f'{stage2} Error (nm)', fontsize=10, fontweight='bold')
+                ax.set_xlabel(f'{stage1} Error ({units})', fontsize=10, fontweight='bold')
+                ax.set_ylabel(f'{stage2} Error ({units})', fontsize=10, fontweight='bold')
                 ax.set_title(f'{stage1} vs {stage2}', fontsize=11, fontweight='bold')
                 
                 # Smart legend

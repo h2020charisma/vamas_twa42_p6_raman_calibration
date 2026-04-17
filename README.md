@@ -5,6 +5,8 @@ This repository contains a [Ploomber](https://ploomber.io/)-based analysis pipel
 - implementation of [CWA18133 Raman instruments calibration and verification protocols](https://static1.squarespace.com/static/5fabfc06f012f739139f5df2/t/66ebcf55aa76f94840f51f97/1726730081110/cwa18133-1.pdf) 
 - using open source [ramanchada2](https://github.com/h2020charisma/ramanchada2) library [[doi:10.1002/jrs.6789](https://doi.org/10.1002/jrs.6789)].
 
+- [Overview](README_overview.md) describes the aims and structure of this program. 
+
 ---
 
 ```mermaid
@@ -44,11 +46,48 @@ pyproject.toml
 LICENSE
 README.md
 ```
+---
+## Folder structure for analysis
 
-> [Overview](README_overview.md).
-> Background on [Ploomber pipeline.yaml](README_ploomber.md#pipelineyaml).
+
+
+```
+Codebase (after cloning this repo to a folder)
+       |-src
+              | -env.yaml                 << contains config params
+                   config_root : location of folder which has json file
+                   config_output : location of folder where we generate output
+                   <there are other config options which need to be set as per the analysis>
+ 
+```
+The command `uv run ploomber build` is to be run while in the src folder.
+The other folder is a super-directory with following suggested structure.
+
+```
+main_dir (this is the directory whose full path is defined in env.yaml under the `config_root` tag)
+  |-config_pipeline.json
+  |-info.xlsx (an excel file with spectra information)
+  |data/
+       |-file1.csv
+       |-file2.csv 
+
+ 
+```
+Check [this visual description](img/description_.jpg) for details on how to prepare your directories.
+
+Summary:  `env.yaml` reads `config_pipeline.json`. The json file reads the excel file, and then recognizes what is spectra and what is background. This is followed by analysis as defined in Ramanchada2 repo.
+
+Refer to the structure of `config_pipeline.json` [here](README_config.md#%EF%B8%8F-configuration-file-config_pipelinejson).
 
 ---
+
+
+> Going through the [overview](README_overview.md) is highly recommended.
+> Background on [Ploomber pipeline.yaml](README_ploomber.md#pipelineyaml).
+
+
+---
+
 
 ## 📦 Quick start
 

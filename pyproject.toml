@@ -4,15 +4,13 @@ version = "1.0.0"
 description = "Data analysis for VAMAS Project 06 Protocols for Raman instrument calibration and harmonisation of Raman data"
 license = "MIT"
 authors = [
-    "Nina Jeliazkova <jeliazkova.nina@gmail.com>",
+    { name = "Nina Jeliazkova", email = "jeliazkova.nina@gmail.com" },
 ]
 readme = "README.md"
 maintainers = [
-    "Luchesar Iliev <luchesar.iliev@gmail.com>",
-    "Vedrin Jeliazkov <vedrin.jeliazkov@gmail.com>",
+    { name = "Luchesar Iliev", email = "luchesar.iliev@gmail.com" },
+    { name = "Vedrin Jeliazkov", email = "vedrin.jeliazkov@gmail.com" },
 ]
-homepage = "https://www.vamas.org/twa42/documents/2024_vamas_twa42_p6_raman_calibration.pdf"
-repository = "https://github.com/h2020charisma/vamas_twa42_p6_raman_calibration"
 requires-python = ">=3.10"
 dependencies = [
     "emd~=0.7.0",
@@ -32,6 +30,10 @@ dependencies = [
     "scipy~=1.11.4",
     "tables~=3.9.2",
 ]
+
+[project.urls]
+homepage = "https://www.vamas.org/twa42/documents/2024_vamas_twa42_p6_raman_calibration.pdf"
+repository = "https://github.com/h2020charisma/vamas_twa42_p6_raman_calibration"
 
 [tool.uv.sources]
 ramanchada2 = { path = "../ramanchada2", editable = true }

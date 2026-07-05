@@ -87,9 +87,21 @@ def build_model(op_data, laser, cfg, key, ne_units, si_units,
         find_kw=find_si, fit_peaks_kw={}, should_fit=True, name="Si", profile="Pearson4",
     )
     laser0 = 1e7 / (1e7 / cm.components[1].model + SI_REF)
-    anchor_lo = float(np.min(model_ne.model.x))
+    anchor_lo = float(np.min(_anchor_x(model_ne.model)))
     return cm, dict(interp=type(model_ne.model).__name__, anchor_lo=anchor_lo,
                     laser0=laser0, laser0_err=laser0 - laser)
+
+
+def _anchor_x(model):
+    """Measured Ne anchor positions, regardless of interpolator class.
+
+    poly/pchip/cubic_spline expose the fitted x in ``.x``; scipy's RBFInterpolator
+    (thin-plate / polyharmonic spline) stores the point coordinates in ``.y``.
+    """
+    x = getattr(model, "x", None)
+    if x is None:
+        x = getattr(model, "y", None)  # CustomRBFInterpolator
+    return np.asarray(x, dtype=float).reshape(-1)
 
 
 def apply_one(model, cm1, units="cm-1"):

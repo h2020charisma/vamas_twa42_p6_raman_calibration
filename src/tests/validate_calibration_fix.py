@@ -31,7 +31,11 @@ def diagnostics(pkl):
     op = op.group(1) if op else "?"
     m = CalibrationModel.from_file(pkl)
     neon, si = m.components[0], m.components[1]
-    anchor_lo = float(np.min(neon.model.x))
+    # poly/pchip/cubic expose fitted x in .x; scipy RBF (thin-plate spline) uses .y
+    anchor_x = getattr(neon.model, "x", None)
+    if anchor_x is None:
+        anchor_x = getattr(neon.model, "y", None)
+    anchor_lo = float(np.min(np.asarray(anchor_x, dtype=float).reshape(-1)))
     d = dict(laser=laser, op=op, interp=type(neon.model).__name__,
              anchor_lo=anchor_lo, units=neon.spe_units)
     if neon.spe_units == "pixel":

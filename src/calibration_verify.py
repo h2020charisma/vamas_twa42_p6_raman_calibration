@@ -47,7 +47,7 @@ def get_reference_peaks(tag):
         "S0P":  {520.45 : 1},
         "S0N":  {520.45 : 1},
         "S1N":  {520.45 : 1},
-        #"PST": {620.9:16, 795.8:10, 1001.4:100,  1031.8:27, 1155.3:13, 1450.5:8,  1583.1:12, 1602.3:28, 2852.4:9, 2904.5:13},
+        "PST": {620.9:16, 795.8:10, 1001.4:100,  1031.8:27, 1155.3:13, 1450.5:8,  1583.1:12, 1602.3:28, 2852.4:9, 2904.5:13},
         "CAL": {155.21:1, 281.26:1, 711.95:1, 1085.91:1, 1435.22:1, 1748.91:1}
     }
     return _lookup_cm1.get(tag, None)
@@ -271,6 +271,28 @@ for key in upstream["spectracal_*"].keys():
             axis.grid()
 
 matched_peaks.to_csv(product["matched_peaks"], index=False)
+
+toc_heading("Matched sample peak distances: calibration effect summary", "h2")
+toc_heading("Robust statistics per stage: |distance| pairs above 20 cm⁻¹ are matching artifacts "
+            "(present before AND after calibration) and are excluded from the means, so a few "
+            "artifacts cannot mask or fake a regression. Median is reported alongside the mean "
+            "because a single bad optical path dominates a plain mean.", "p")
+_mp = matched_peaks.copy()
+_mp["absd"] = _mp["distances"].abs()
+_ok = _mp[_mp["absd"] <= 20]
+_overall = _ok.groupby("before_after")["absd"].agg(
+    robust_mean="mean", median="median", n="count").round(3)
+display(_overall)
+_per_op = _ok.groupby(["key", "optical_path", "laser_wl", "before_after"])["absd"].agg(
+    robust_mean="mean", median="median", n="count").round(2)
+_piv = _per_op["robust_mean"].unstack("before_after")
+if "1.original" in _piv.columns and "2.x-clbr" in _piv.columns:
+    _worse = _piv[_piv["2.x-clbr"] > _piv["1.original"] + 1.0]
+    toc_heading("Optical paths where x-calibration WORSENS the robust mean by > 1 cm⁻¹ "
+                "(empty table = calibration helps or is neutral everywhere):", "p")
+    display(_worse)
+toc_heading("Per optical path (robust mean / median / n):", "p")
+display(_per_op.unstack("before_after"))
 
 labels = ["original", f"{mode}-calibrated"]
 

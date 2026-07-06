@@ -1,6 +1,7 @@
 from pathlib import Path
 import pandas as pd
 from ramanchada2.protocols.calibration.calibration_model import CalibrationModel
+from ramanchada2.protocols.calibration.serialization import export_cwa_x
 from ramanchada2.protocols.calibration.xcalibration import match_peaks, fit_peaks
 import ramanchada2.misc.constants as rc2const
 from ramanchada2.misc.utils.ramanshift_to_wavelength import shift_cm_1_to_abs_nm
@@ -289,8 +290,24 @@ def main(df, _config, _ne_units, _si_units, test_offset=0):
         else:
             calmodel1.save(os.path.join(product["calmodels"],
                                     f"calmodel_{laser_wl}_{optical_path}.pkl"))
-                
-            calmodel1.plot()      
+            # portable formats (CWA 18133 §8): full model as JSON + calibration curve as CSV
+            try:
+                _base = os.path.join(product["calmodels"],
+                                     f"calmodel_{laser_wl}_{optical_path}")
+                calmodel1.save(_base + ".json")
+                if _ne_units == "cm-1":
+                    _range = (float(np.min(spe_neon.x)), float(np.max(spe_neon.x)))
+                else:  # nm/pixel neon axis: use the CWA-typical Raman shift range
+                    _range = (100.0, 3500.0)
+                export_cwa_x(calmodel1, _base + "_cwa", spectral_range=_range,
+                             metadata={"key": key, "optical_path": optical_path,
+                                       "laser_wl": int(laser_wl),
+                                       "match_method": match_mode,
+                                       "interpolator": interpolator})
+            except Exception:
+                traceback.print_exc()
+
+            calmodel1.plot()
         # let's check the Si peak with Pearson4 profile
         si_peak = 520.45
         spe_sil_calibrated = calmodel1.apply_calibration_x(spe_sil, spe_units=_si_units)

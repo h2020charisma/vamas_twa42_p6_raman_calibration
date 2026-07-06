@@ -2,6 +2,7 @@ import pandas as pd
 import os.path
 from pathlib import Path
 from utils import (load_config, load_calibration_model)
+from ramanchada2.protocols.calibration.serialization import export_cwa_y
 from ramanchada2.protocols.calibration.ycalibration import (
     YCalibrationComponent, CertificatesDict)
 import matplotlib.pyplot as plt
@@ -82,6 +83,18 @@ def main(df, calmodel_path, config):
             with open(os.path.join(product["ycalmodels"],
                                     f"ycalmodel_{laser_wl}_{optical_path}_{cert}.pkl"), "wb") as f:
                 pickle.dump(ycal, f)
+            # portable formats (CWA 18133 §8): intensity-factor curve CSV + full model JSON
+            try:
+                export_cwa_y(
+                    ycal,
+                    os.path.join(product["ycalmodels"],
+                                 f"ycalmodel_{laser_wl}_{optical_path}_{cert}_cwa"),
+                    metadata={"key": key, "optical_path": optical_path,
+                              "laser_wl": int(laser_wl), "certificate": cert},
+                    x_calibration_ref=f"calmodel_{laser_wl}_{optical_path}.json",
+                )
+            except Exception:
+                traceback.print_exc()
         
             srm_spe.plot(ax=axes[0].twinx(), label='measured')
             srm_calibrated.plot(ax=axes[0].twinx(),

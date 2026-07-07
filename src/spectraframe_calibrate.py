@@ -108,7 +108,7 @@ def main(df, _config, _ne_units, _si_units, test_offset=0):
     for group_keys, op_data in grouped_df:
         _success = False
         fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 3)) 
-        laser_wl = group_keys[0]
+        laser_wl = int(group_keys[0])
         optical_path = group_keys[1]
 
         ax1.set_title(f"{key} {laser_wl}nm {optical_path}")

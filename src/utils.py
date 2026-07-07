@@ -424,7 +424,7 @@ def create_ycal(spe_srm, xcalmodel=None, cert_srm=None, window_length=0):
     return ycal, srm_calibrated
 
 
-def init_logging(log_dir, log_file="vamas_p6.log", level=logging.DEBUG):
+def init_logging(log_dir, log_file="vamas_p6.log", level=logging.INFO):
     log_dir.mkdir(parents=True, exist_ok=True)
     log_file = log_dir / log_file
 

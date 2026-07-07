@@ -57,6 +57,27 @@ tasks:
       key: "{{calibration_key}}"
 
 
+  # CWA 18133 Figure 2 sections 3 & 4: spectral distribution, pixel/spectral
+  # resolution and SpeD:SRes curves from the x-calibrated Ne and calcite spectra
+  - source: spectraframe_resolution.py
+    name: "spectrares_[[key]]"
+    product:
+      nb: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/spectrares.{{report_format}}"
+      peaks: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/resolution_peaks.csv"
+      curves: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/resolution_curves.csv"
+      summary: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/resolution_summary.csv"
+    upstream: ["spectraframe_*", "spectracal_*"]
+    params:
+      config_templates: "{{config_templates}}"
+      config_root: "{{config_root}}"
+      neon_tag: "{{ne_tag}}"
+      calcite_tag: "{{calcite_tag}}"
+      e2529_divisor: 0.684
+      e2529_offset: 1.029
+      curve_fit_degree: 2
+    grid:
+      key: "{{calibration_key}}"
+
 
   - source: spectraframe_tips.py
     upstream: ["spectraframe_*"]
@@ -113,12 +134,28 @@ tasks:
       matched_peaks: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/assessment/matched_peaks_Ne.csv"
       analysis: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/assessment/analysis_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}_Ne.png"
     params:
-      exclude: "P6_0301"
+      exclude: ""
       context: "Match mode {{match_mode}} Interpolators {{interpolator}} Fit Ne peaks {{fit_ne_peaks}}"
       sample_peaks: "C:\\Users\\jelia\\Nextcloud\\Projects\\VAMAS\\VAMAS_P6_analysis\\matched_peaks_samples-1.csv"
     nbconvert_export_kwargs:
         # optionally hide the code from the report
         exclude_input: True            
+
+
+  # resolution-aware comparison across instruments: aggregates spectrares_*
+  # curves per laser wavelength and derives the harmonization target envelope
+  - source: resolution_compare.py
+    name: "resolution_compare"
+    upstream: ["spectrares_*"]
+    product:
+      nb: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/assessment/resolution_compare.{{report_format}}"
+      summary: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/assessment/resolution_summary_all.csv"
+      envelope: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/assessment/resolution_envelope.csv"
+    params:
+      context: "Match mode {{match_mode}} Interpolators {{interpolator}} Fit Ne peaks {{fit_ne_peaks}}"
+    nbconvert_export_kwargs:
+        # optionally hide the code from the report
+        exclude_input: True
 
 
   - source: release.py

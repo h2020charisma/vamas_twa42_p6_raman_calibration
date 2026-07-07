@@ -99,8 +99,9 @@ test_tags: "S0N,CAL"
 apap_tag: "APAP"
 ti_tags: "TiPS_PS,TiPS_Ti"
 
-match_mode: "cluster"
-interpolator: "pchip"
+match_mode: "qargmin2d"
+interpolator: "poly"
+
 ```
 
 ⚠️ Use paths relevant to your local or server environment. Do not use example paths as-is.

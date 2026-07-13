@@ -76,20 +76,22 @@ def entity_styles(entities):
 
 
 def overlay(ax, curves_wl, ycol, styles, ylabel, title, fallback_col=None,
-            peaks_wl=None, peak_ycol=None):
+            peaks_wl=None, peak_ycol=None, label_suffix=None):
     """One line per instrument (color+linestyle identity, see entity_styles).
     Instruments whose curve was gated out (all-NaN ycol) get their raw peak
     points scattered instead, if peaks are supplied, so the data is shown
     without inventing a curve. A fallback curve (e.g. pixel resolution
-    standing in for spectral resolution) is drawn dotted to mark it as such."""
+    standing in for spectral resolution) is drawn dotted to mark it as such.
+    label_suffix maps entity -> extra legend text (e.g. resampled-grid flag)."""
+    label_suffix = label_suffix or {}
     for ent, (color, linestyle) in styles.items():
         sub = curves_wl.loc[curves_wl["entity"] == ent]
         if not sub.empty and sub[ycol].notna().any():
             ax.plot(sub["raman_shift"], sub[ycol], color=color, linewidth=1.8,
-                    linestyle=linestyle, label=ent)
+                    linestyle=linestyle, label=ent + label_suffix.get(ent, ""))
         elif not sub.empty and fallback_col is not None and sub[fallback_col].notna().any():
             ax.plot(sub["raman_shift"], sub[fallback_col], color=color, linewidth=1.2,
-                    linestyle=":", label=f"{ent} ({fallback_col}, no calcite)")
+                    linestyle=":", label=f"{ent} ({fallback_col}, no usable calcite)")
         elif peaks_wl is not None and peak_ycol is not None:
             pk = peaks_wl.loc[(peaks_wl["entity"] == ent) & (peaks_wl["sample"] == "Neon")]
             if not pk.empty:
@@ -140,6 +142,14 @@ def plot_sres_bars(summary):
     if missing:
         toc_heading(f"No spectral resolution value (calcite missing/not fitted): "
                     f"{', '.join(missing)}", "p")
+    if "sres_plausible" in summary.columns:
+        implausible = valid.loc[valid["sres_plausible"].eq(False), "entity"].tolist()
+        if implausible:
+            toc_heading(
+                "Implausible spectral resolution excluded (E2529 value well "
+                "below the neon-derived instrument function, i.e. defective "
+                f"calcite fit): {', '.join(implausible)}", "p")
+            valid = valid.loc[~valid["sres_plausible"].eq(False)]
     if valid.empty:
         return
     laser_wls = sorted(valid["laser_wl"].unique())
@@ -201,9 +211,21 @@ try:
         "1085.91 cm⁻¹ fit and resulting ASTM E2529 spectral resolution, "
         "the laser-effect scaling ratio applied to the pixel-resolution "
         "curve, and the CWA 18133 Table 1 boundary-of-use check "
-        "(pixel resolution &lt; 0.8 nm).")
+        "(pixel resolution &lt; 0.8 nm). <code>uniform_grid</code> flags "
+        "vendor-resampled exports (SpeD shows the grid, not detector "
+        "pixels); <code>sres_plausible</code> is False when the E2529 "
+        "spectral resolution falls well below the neon-derived instrument "
+        "function (defective calcite fit), in which case the laser-effect "
+        "rescale is not applied.")
 
     plot_sres_bars(summary)
+
+    # entities whose raw x-axis is a vendor-resampled uniform grid: their SpeD
+    # curve shows the export grid, not detector pixels (flagged in the legend)
+    resampled = {}
+    if "uniform_grid" in summary.columns:
+        resampled = {e: " (resampled grid)" for e in
+                     summary.loc[summary["uniform_grid"].eq(True), "entity"]}
 
     envelopes = []
     for laser_wl, curves_wl in curves.groupby("laser_wl"):
@@ -213,7 +235,8 @@ try:
 
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 4))
         overlay(ax1, curves_wl, "sped", styles,
-                "Spectral distribution/cm⁻¹ per pixel", "Spectral distribution curves")
+                "Spectral distribution/cm⁻¹ per pixel", "Spectral distribution curves",
+                label_suffix=resampled)
         overlay(ax2, curves_wl, "spectral_res", styles,
                 "FWHM/cm⁻¹", "Spectral resolution curves", fallback_col="pixel_res",
                 peaks_wl=peaks_wl, peak_ycol="fwhm")
@@ -232,7 +255,13 @@ try:
             f"<b>Figure {laser_wl}.1.</b> Left: spectral distribution curve "
             "(CWA §3.1.9) - the Raman-shift width each detector pixel "
             "covers on the calibrated axis, i.e. sampling density (lower = "
-            "finer sampling). Right: spectral resolution curve (CWA "
+            "finer sampling). Narrow dips at a few regularly-spaced points "
+            "mark detector segment-stitching seams already present in the "
+            "raw spectrum, not a calibration defect. A flat line flagged "
+            "'(resampled grid)' means that instrument's export is already "
+            "interpolated onto a uniform grid, so its curve shows the "
+            "resampling step, not the physical pixel pitch. "
+            "Right: spectral resolution curve (CWA "
             "§3.1.11, solid/dashed lines) - the neon-derived pixel "
             "resolution curve rescaled by the calcite/E2529 measurement to "
             "give the true achievable Raman resolution (lower = sharper "

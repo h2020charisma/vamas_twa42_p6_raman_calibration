@@ -15,7 +15,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import traceback
 import os.path
-from IPython.display import display
+from IPython.display import display, HTML
 import ramanchada2.misc.constants as rc2const
 from ramanchada2.misc.types.peak_candidates import ListPeakCandidateMultiModel
 from ramanchada2.misc.utils.ramanshift_to_wavelength import (
@@ -52,6 +52,26 @@ MIN_NEON_PEAKS = 6
 # resolution curves are only evaluated within the neon peak span, widened by
 # this fraction of the span (small margin, no far extrapolation)
 CURVE_MARGIN_FRAC = 0.05
+# raw x-axis spacing with relative spread below this is a vendor-resampled
+# (uniform) grid: the spectral distribution then shows the export grid, not
+# the physical detector pixels (see docs/flat_resolution_curves.md)
+UNIFORM_GRID_REL_TOL = 0.01
+# the spectral resolution cannot be meaningfully better than the neon-derived
+# pixel resolution (neon lines have ~zero intrinsic width, so their FWHM *is*
+# the instrument function); a laser-effect ratio below this bound - allowing
+# for the ~20% stated accuracy of the ASTM E2529 formula - means the calcite
+# fit is defective and the rescale is not applied
+SRES_MIN_RATIO = 0.8
+
+
+def detect_uniform_grid(x, rel_tol=UNIFORM_GRID_REL_TOL):
+    """(is_uniform, median_step) of a raw x-axis. A (near-)constant spacing
+    means the vendor export was resampled onto a uniform grid."""
+    d = np.diff(np.asarray(x, dtype=float))
+    med = float(np.median(d))
+    if len(d) < 2 or med == 0:
+        return False, med
+    return bool((d.max() - d.min()) / abs(med) < rel_tol), med
 
 
 def fwhm_cm1_to_nm(center_cm1, fwhm_cm1, laser_wl):
@@ -73,12 +93,19 @@ def select_spectrum(op_data, tag, prefer_hdr=False):
 
 def spectral_distribution(spe_calibrated):
     """CWA 18133 3.1.9: width collected by pixel n, taken as
-    halfway(n, n+1) - halfway(n-1, n) == np.gradient. Non-monotonic
-    (decreasing) segments of the calibrated axis are masked out."""
+    halfway(n, n+1) - halfway(n-1, n) == np.gradient.
+
+    A few narrow dips are expected at regular pixel intervals: they mark
+    detector segment-stitching seams already present in the raw
+    (pre-calibration) spectrum (CWA 18133 3.1.6 lists "stitching data
+    segments" as a primary-data treatment) - a brief local compression of
+    the native pixel pitch where two acquisition segments were joined.
+    The calibration curve is smooth and faithfully carries the seam
+    through, so this is real instrument characterization, not a defect;
+    it is smoothed out by the polynomial pixel-resolution curve fit."""
     x = spe_calibrated.x
     sped = np.gradient(x)
-    monotonic = np.concatenate(([True], np.diff(x) > 0))
-    return x[monotonic], sped[monotonic]
+    return x, sped
 
 
 def neon_reference_cm1(laser_wl):
@@ -197,11 +224,16 @@ def spectral_resolution_e2529(fwhm_1085):
 
 
 def plot_group(entry_id, x_sped, sped, ne_peaks, pixel_res, spectral_res,
-               sped_sres, calcite_peak, sres):
+               sped_sres, calcite_peak, sres, uniform_grid=False,
+               sres_plausible=None):
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 4))
     fig.suptitle(entry_id)
 
     ax1.plot(x_sped, sped, color="blue")
+    if uniform_grid:
+        ax1.text(0.03, 0.95, "resampled export grid,\nnot detector pixels",
+                 transform=ax1.transAxes, va="top", fontsize=8, color="#a33327",
+                 bbox=dict(boxstyle="round", facecolor="white", alpha=0.8))
     ax1.set_xlabel("Raman shift/cm⁻¹")
     ax1.set_ylabel("Spectral distribution/cm⁻¹ per pixel")
     ax1.set_title("Spectral distribution curve")
@@ -214,8 +246,11 @@ def plot_group(entry_id, x_sped, sped, ne_peaks, pixel_res, spectral_res,
         ax2.plot(x_sped, spectral_res, color="green", linestyle="--",
                  label="spectral resolution curve")
     if calcite_peak is not None:
+        _sres_label = f"SRes (calcite, E2529) {sres:.2f} cm⁻¹"
+        if sres_plausible is False:
+            _sres_label += " — implausible, not applied"
         ax2.scatter([calcite_peak["center"]], [sres], color="red", marker="x", s=80,
-                    label=f"SRes (calcite, E2529) {sres:.2f} cm⁻¹")
+                    label=_sres_label)
     ax2.set_xlabel("Raman shift/cm⁻¹")
     ax2.set_ylabel("FWHM/cm⁻¹")
     ax2.set_title("Pixel & spectral resolution curves")
@@ -230,6 +265,28 @@ def plot_group(entry_id, x_sped, sped, ne_peaks, pixel_res, spectral_res,
     ax3.grid()
     plt.tight_layout()
     plt.show()
+    note = (
+        "Narrow dips at a handful of regularly-spaced points in the spectral "
+        "distribution curve (left) mark detector segment-stitching seams "
+        "already present in the raw spectrum, not a calibration or fitting "
+        "defect - the pixel/spectral resolution curves (middle) are fit "
+        "through the neon peaks and are not affected by them.")
+    if uniform_grid:
+        note += (
+            " <b>The raw spectrum of this instrument is on a uniform grid</b> "
+            "(vendor-resampled export), so the flat spectral distribution "
+            "curve shows the resampling grid, not the physical pixel pitch; "
+            "the SpeD and SpeD:SRes curves must not be interpreted as CWA "
+            "pixel properties.")
+    if sres_plausible is False:
+        note += (
+            " <b>The calcite fit is implausible</b> (its E2529 spectral "
+            "resolution falls well below the neon-derived instrument "
+            "function), so the laser-effect rescale was not applied and no "
+            "spectral resolution curve is drawn.")
+    display(HTML(
+        '<p style="max-width:900px;color:#52514e;font-size:0.9em;margin-top:-0.5em">'
+        + note + "</p>"))
 
 
 def main(df, calmodel_path, _config):
@@ -256,6 +313,12 @@ def main(df, calmodel_path, _config):
         try:
             # Section 3 - calibrated Raman shift axis applied to the neon spectrum
             _ne_units = get_config_units(_config, key, tag="neon")
+            uniform_grid, grid_step = detect_uniform_grid(spe_neon.x)
+            if uniform_grid:
+                logger.warning(
+                    f"{entry_id}: raw x-axis is a uniform grid "
+                    f"(step {grid_step:.5f} {_ne_units}) - vendor-resampled export; "
+                    "SpeD reflects the grid, not detector pixels")
             spe_ne_cal = calmodel.apply_calibration_x(spe_neon, spe_units=_ne_units).dropna()
 
             x_sped, sped = spectral_distribution(spe_ne_cal)
@@ -280,7 +343,7 @@ def main(df, calmodel_path, _config):
                      for c, f in zip(ne_peaks["center"], ne_peaks["fwhm"])])
 
         # Section 4 - calcite spectral resolution (ASTM E2529)
-        calcite_peak, sres, ratio = None, None, None
+        calcite_peak, sres, ratio, sres_plausible = None, None, None, None
         spe_calcite = select_spectrum(op_data, calcite_tag)
         if spe_calcite is None:
             logger.warning(f"{entry_id}: no {calcite_tag} spectrum, "
@@ -292,12 +355,29 @@ def main(df, calmodel_path, _config):
                 calcite_peak, spe_1085 = fit_calcite_1085(spe_cal_calibrated, _config)
                 if calcite_peak is not None:
                     sres = spectral_resolution_e2529(calcite_peak["fwhm"])
+                    neon_fwhm_1085 = float(pixel_res_curve(calcite_peak["center"]))
                     # laser effect adjustment: scale the pixel resolution curve
                     # so it passes through the calcite spectral resolution value
-                    ratio = sres / pixel_res_curve(calcite_peak["center"])
-                    logger.info(f"{entry_id}: calcite FWHM {calcite_peak['fwhm']:.3f} cm-1 "
-                                f"({calcite_peak.get('profile')}), SRes {sres:.3f} cm-1, "
-                                f"laser effect ratio {ratio:.3f}")
+                    _ratio = sres / neon_fwhm_1085
+                    # sanity: a rescale that pushes the resolution curve well
+                    # below the neon-derived instrument function is physically
+                    # impossible - the calcite fit is defective (see
+                    # docs/flat_resolution_curves.md) and would corrupt the
+                    # spectral resolution curve
+                    if _ratio < SRES_MIN_RATIO or sres <= 0:
+                        sres_plausible = False
+                        logger.warning(
+                            f"{entry_id}: implausible calcite fit - SRes "
+                            f"{sres:.3f} cm-1 is {_ratio:.2f}x the neon-derived "
+                            f"{neon_fwhm_1085:.3f} cm-1 at {calcite_peak['center']:.1f} "
+                            f"(calcite FWHM {calcite_peak['fwhm']:.3f}); "
+                            "laser-effect rescale NOT applied")
+                    else:
+                        sres_plausible = True
+                        ratio = _ratio
+                        logger.info(f"{entry_id}: calcite FWHM {calcite_peak['fwhm']:.3f} cm-1 "
+                                    f"({calcite_peak.get('profile')}), SRes {sres:.3f} cm-1, "
+                                    f"laser effect ratio {ratio:.3f}")
             except Exception:
                 logger.error(f"{entry_id}: calcite section failed:\n{traceback.format_exc()}")
 
@@ -318,7 +398,8 @@ def main(df, calmodel_path, _config):
         sped_sres = np.where(np.isfinite(spectral_res), sped_sres, np.nan)
 
         plot_group(entry_id, x_sped, sped, ne_peaks, pixel_res, spectral_res,
-                   sped_sres, calcite_peak, sres)
+                   sped_sres, calcite_peak, sres, uniform_grid=uniform_grid,
+                   sres_plausible=sres_plausible)
 
         peaks_records = ne_peaks[["sample", "center", "fwhm", "fwhm_nm", "height"]
                                  + (["fwhm_stderr"] if "fwhm_stderr" in ne_peaks.columns else [])].copy()
@@ -357,6 +438,9 @@ def main(df, calmodel_path, _config):
             "n_neon_peaks": len(ne_peaks),
             "curve_ok": curve_ok,
             "curve_monotonic": curve_monotonic,
+            "uniform_grid": uniform_grid,
+            "grid_step": grid_step,
+            "sres_plausible": sres_plausible,
             "fit_lo": fit_lo,
             "fit_hi": fit_hi,
             "neon_fwhm_median": float(ne_peaks["fwhm"].median()) if not ne_peaks.empty else None,

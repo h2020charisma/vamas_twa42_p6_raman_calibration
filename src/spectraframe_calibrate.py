@@ -123,7 +123,11 @@ def main(df, _config, _ne_units, _si_units, test_offset=0):
 
         spe_neon = test_shift(spe_neon)
 
-        spe_sil = op_data.loc[op_data["sample"] == si_tag]["spectrum"].iloc[0]
+        try:
+            spe_sil = op_data.loc[op_data["sample"] == si_tag]["spectrum"].iloc[0]
+        except Exception as err:
+            logger.warning(err)
+            continue
         spe_sil = test_shift(spe_sil)
 
         spe_sil.plot(ax=ax2, label=si_tag)

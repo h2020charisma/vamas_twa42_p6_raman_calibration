@@ -1,0 +1,16 @@
+meta:
+    extract_upstream: False
+
+tasks:
+
+  - source: read_witec_export.py
+    name: "convert_[[key]]"
+    upstream: []
+    product: 
+      nb: "{{config_output}}/[[key]]/convert.ipynb"
+    params:
+      config_templates: "{{config_templates}}"
+      config_root: "{{config_root}}"
+      plot: True
+    grid:
+      key: "P6_0501"

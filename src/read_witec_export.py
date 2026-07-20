@@ -158,18 +158,20 @@ def convert_witec_to_cha(data_file):
 
     # read spectrum
     x_relative, y = read_witec_spectrum(data_file)
-
+    print(x_relative.min(), x_relative.max())
     # read all metadata
     metadata, raw_metadata = parse_witec_metadata(info_file)
 
-    # determine Raman axis offset
-    spectral_center = get_spectral_center(
-        metadata,
-        raw_metadata
-    )
+    # WITec exports "rel. 1/cm" already as calibrated Raman shift
+    # (instrument software applied the grating calibration before export),
+    # so the exported axis is used directly. "Spectral Center" is the Raman
+    # shift at the CCD center pixel - informational only, not an offset.
+    try:
+        spectral_center = get_spectral_center(metadata, raw_metadata)
+    except ValueError:
+        spectral_center = None
 
-    # convert relative cm-1 -> Raman shift cm-1
-    x = x_relative + spectral_center
+    x = x_relative
 
     # create ramanchada2 Spectrum
     spectrum = Spectrum(
@@ -183,21 +185,22 @@ def convert_witec_to_cha(data_file):
                 str(info_file),
 
             "Original axis":
-                "relative 1/cm",
+                "rel. 1/cm (calibrated Raman shift)",
 
             "Converted axis":
                 "Raman shift 1/cm",
 
-            "Raman axis offset cm-1":
+            "Spectral Center cm-1":
                 spectral_center,
             }
     )
     if plot:
         spectrum.plot(label=data_file)
     # write cha
-    output = data_file.with_suffix(".cha").name
+    output = str(data_file.with_suffix(".cha"))
     print(type(output), output)
-    spectrum.write_cha(output, dataset="Raw")
+    Path(data_file.with_suffix(".cha")).unlink(missing_ok=True)
+    spectrum.write_cha(output, dataset="/raw")
 
     return output, spectrum
 
@@ -234,7 +237,7 @@ def convert_witec_folder(root_folder):
             converted.append(cha_file)
 
             print(
-                f"OK: {data_file.name} -> {cha_file.name}"
+                f"OK: {data_file} -> {cha_file}"
             )
 
         except Exception as e:

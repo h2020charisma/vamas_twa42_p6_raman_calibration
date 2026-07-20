@@ -4,6 +4,14 @@
 Dataset: VAMAS P6 round robin, 11 calibration keys, 532/785 nm, Ne + Si + calcite (CAL) +
 polystyrene (PST) + APAP; assessment against certified PST/CAL peak positions.*
 
+> **Standards references:** condensed summaries of the two CWA standards live
+> alongside this file — [`cwa18133_summary.md`](cwa18133_summary.md) (x/y-axis
+> calibration & verification, what this pipeline implements) and
+> [`cwa18134_summary.md`](cwa18134_summary.md) (intensity *twinning*; the TiPS
+> = epoxy+TiO₂ test sample and its 144 cm⁻¹ band; implemented in ramanchada2,
+> not yet in this pipeline). Note APAP is a held-out material here, not a CWA
+> 18133 sample; TiPS belongs to CWA 18134.
+
 ## 1. What the implementation covers, mapped to the CWA
 
 | CWA 18133:2024 clause | Implementation | Status |

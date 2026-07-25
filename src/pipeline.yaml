@@ -72,8 +72,9 @@ tasks:
       config_root: "{{config_root}}"
       neon_tag: "{{ne_tag}}"
       calcite_tag: "{{calcite_tag}}"
-      e2529_divisor: 0.684
-      e2529_offset: 1.029
+      # E2529 SRes constants now live in the ramanchada2 resolution module
+      # (offset 0.684, slope 1.0209); the old e2529_divisor/e2529_offset here
+      # encoded the wrong formula (FWHM/0.684 - 1.029) and have been removed.
       curve_fit_degree: 2
     grid:
       key: "{{calibration_key}}"

@@ -77,8 +77,11 @@ def main(df, calmodel_path, config):
             except Exception as err:
                 traceback.print_exc()
                 xcalmodel = None
+            # No savgol pre-smoothing: YCalibrationComponent now fits the measured
+            # reference with the certificate's own functional form, which denoises
+            # analytically (and does not distort the amplitude as smoothing did).
             ycal, srm_calibrated = create_ycal(
-                srm_spe, xcalmodel=xcalmodel, cert_srm=certs[cert], window_length=40)
+                srm_spe, xcalmodel=xcalmodel, cert_srm=certs[cert], window_length=0)
             # save y model
             with open(os.path.join(product["ycalmodels"],
                                     f"ycalmodel_{laser_wl}_{optical_path}_{cert}.pkl"), "wb") as f:

@@ -8,8 +8,19 @@
             },
             "units" : {
                 "neon" : "nm"
-            }			
-            
+            }
+
+		},
+		"06": {
+			"template": "example_pixel/Template Raman Reporting_CHARISMA.xlsx",
+			"path": "example_pixel/",
+			"notes": "Detector delivers some samples in raw pixels, others already in cm-1. Per-sample `units` may be nm | cm-1 (default) | pixel. Pixel samples are mapped to cm-1 at load: neon-in-pixels -> pixel->nm + laser zeroing, else E1840 calibrants (si/pst/cal/apap)-in-pixels -> pixel->cm-1 directly. `axis_range_hint` (lo, hi in the target unit over the full pixel span) is recommended so lines are matched to the right bands when the detector reaches well beyond the calibrant lines.",
+			"units" : {
+				"neon" : "pixel",
+				"si" : "pixel",
+				"ti" : "pixel"
+			},
+			"axis_range_hint" : [533.0, 620.0]
 		}
 	},
 	"options": {

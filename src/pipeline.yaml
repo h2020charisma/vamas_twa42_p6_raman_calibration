@@ -8,12 +8,14 @@ tasks:
     upstream: []
     product: 
       nb: "{{config_output}}/overview.html"
+      data: "{{config_output}}/overview.xlsx"
     params:
       config_templates: "{{config_templates}}"
       config_root: "{{config_root}}"
       config_output: "{{config_output}}"
       path_output: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}"
       keys: "{{dataset_key}}"
+      resolution: True
     nbconvert_export_kwargs:
         # optionally hide the code from the report
         exclude_input: True    
@@ -31,11 +33,13 @@ tasks:
     grid:
       key: "{{dataset_key}}"
 
+
   - source: spectraframe_calibrate.py
     name: "spectracal_[[key]]"    
     product: 
       nb: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/spectracal.{{report_format}}"
       calmodels: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/calmodels"
+      matched_peaks: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/matched_peaks.csv"
     upstream: "spectraframe_*"      
     params:
       config_templates: "{{config_templates}}"
@@ -44,9 +48,34 @@ tasks:
       si_tag: "{{si_tag}}"
       pst_tag: "{{pst_tag}}"
       apap_tag: "{{apap_tag}}"
+      calcite_tag: "{{calcite_tag}}"
       fit_neon_peaks: "{{fit_ne_peaks}}"
       match_mode: "{{match_mode}}"
       interpolator: "{{interpolator}}"   
+      test_offset: 0
+    grid:
+      key: "{{calibration_key}}"
+
+
+  # CWA 18133 Figure 2 sections 3 & 4: spectral distribution, pixel/spectral
+  # resolution and SpeD:SRes curves from the x-calibrated Ne and calcite spectra
+  - source: spectraframe_resolution.py
+    name: "spectrares_[[key]]"
+    product:
+      nb: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/spectrares.{{report_format}}"
+      peaks: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/resolution_peaks.csv"
+      curves: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/resolution_curves.csv"
+      summary: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/resolution_summary.csv"
+    upstream: ["spectraframe_*", "spectracal_*"]
+    params:
+      config_templates: "{{config_templates}}"
+      config_root: "{{config_root}}"
+      neon_tag: "{{ne_tag}}"
+      calcite_tag: "{{calcite_tag}}"
+      # E2529 SRes constants now live in the ramanchada2 resolution module
+      # (offset 0.684, slope 1.0209); the old e2529_divisor/e2529_offset here
+      # encoded the wrong formula (FWHM/0.684 - 1.029) and have been removed.
+      curve_fit_degree: 2
     grid:
       key: "{{calibration_key}}"
 
@@ -68,6 +97,8 @@ tasks:
     params:
       config_templates: "{{config_templates}}"
       config_root: "{{config_root}}"
+      pst_tag: "{{pst_tag}}"
+      apap_tag: "{{apap_tag}}"
     grid:
       key: "{{calibration_key}}"
       
@@ -77,6 +108,7 @@ tasks:
     name: "calibration_verify_[[mode]]"    
     product: 
       nb: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/assessment/calibration_verify_[[mode]].{{report_format}}"
+      matched_peaks: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/assessment/matched_peaks_samples.csv"      
     params:
       config_templates: "{{config_templates}}"
       config_root: "{{config_root}}"
@@ -85,7 +117,9 @@ tasks:
       neon_tag: "{{ne_tag}}"
       si_tag: "{{si_tag}}"
       pst_tag: "{{pst_tag}}"
-      calcite_tag: "{{calcite_tag}}"         
+      calcite_tag: "{{calcite_tag}}"     
+      match_mode: "{{match_mode}}"
+      interpolator: "{{interpolator}}"      
     nbconvert_export_kwargs:
         # optionally hide the code from the report
         exclude_input: True            
@@ -93,16 +127,70 @@ tasks:
       mode: ["x", "xy"]
 
 
-  - source: release.py
-    upstream: ["calibration_verify_*"]
+  - source: calibration_analysis.py
+    upstream: ["spectracal_*", "calibration_verify_xy"]
+    name: "calibration_analysis"    
     product: 
-      nb: "{{release_folder}}/index.html"
+      nb: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/assessment/calibration_analysis_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}.html"
+      matched_peaks: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/assessment/matched_peaks_Ne.csv"
+      analysis: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/assessment/analysis_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}_Ne.png"
     params:
-      results_folder: "{{config_output}}"
-      release_folder: "{{release_folder}}"
-      dataset_key: "{{dataset_key}}"      
-      enable: True
+      exclude: ""
+      context: "Match mode {{match_mode}} Interpolators {{interpolator}} Fit Ne peaks {{fit_ne_peaks}}"
+      sample_peaks: "C:\\Users\\jelia\\Nextcloud\\Projects\\VAMAS\\VAMAS_P6_analysis\\matched_peaks_samples-1.csv"
+    nbconvert_export_kwargs:
+        # optionally hide the code from the report
+        exclude_input: True            
+
+
+  # resolution-aware comparison across instruments: aggregates spectrares_*
+  # curves per laser wavelength and derives the harmonization target envelope
+  - source: resolution_compare.py
+    name: "resolution_compare"
+    upstream: ["spectrares_*"]
+    product:
+      nb: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/assessment/resolution_compare.{{report_format}}"
+      summary: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/assessment/resolution_summary_all.csv"
+      envelope: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/assessment/resolution_envelope.csv"
+    params:
+      context: "Match mode {{match_mode}} Interpolators {{interpolator}} Fit Ne peaks {{fit_ne_peaks}}"
     nbconvert_export_kwargs:
         # optionally hide the code from the report
         exclude_input: True
 
+
+  - source: release.py
+    upstream: ["calibration_verify_*"]
+    product: 
+      nb: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/assessment/release.html"
+    params:
+      results_folder: "{{config_output}}"
+      release_folder: "{{release_folder}}"
+      processed_folder: "processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}"
+      dataset_key: "{{dataset_key}}"      
+      enable: "{{release_enable}}"
+    nbconvert_export_kwargs:
+        # optionally hide the code from the report
+        exclude_input: True
+
+  - source: qmatch.py
+    name: "qmatch_[[key]]"    
+    product: 
+      nb: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/qmatch.html"
+    upstream: "spectraframe_*"      
+    params:
+      config_templates: "{{config_templates}}"
+      config_root: "{{config_root}}"
+      neon_tag: "{{ne_tag}}"
+      si_tag: "{{si_tag}}"
+      pst_tag: "{{pst_tag}}"
+      apap_tag: "{{apap_tag}}"
+      calcite_tag: "{{calcite_tag}}"
+      fit_neon_peaks: "{{fit_ne_peaks}}"
+      match_mode: "{{match_mode}}"
+      interpolator: "{{interpolator}}"   
+      test_offset: 0
+      mode: "qargmin2d" #None # None, "demo" "qargmin2d"
+    grid:
+      key: ["P6_0301", "P6_01201"]    
+ 

@@ -10,6 +10,12 @@ import re
 from ramanchada2.protocols.calibration.calibration_model import CalibrationModel
 from ramanchada2.protocols.calibration.ycalibration import (
     YCalibrationComponent, YCalibrationCertificate, CertificatesDict)
+import logging
+import sys
+
+
+logger = logging.getLogger(__name__)
+
 
 def load_config(path):
     with open(path, 'r') as file:
@@ -27,7 +33,7 @@ def get_enabled(key, _config):
 def load_spectrum_df(row):
     fname = row["file_name"]
     if not os.path.isfile(fname):
-        print(f"⚠️ File not found: {fname}")
+        logger.warning(f"⚠️ File not found: {fname}")
         return None        
     else:
         return Spectrum.from_local_file(fname)
@@ -391,7 +397,7 @@ def plot_spectra_heatmaps1(y_original, y_calibrated, wavelength, ids, tag):
 
 
 def load_calibration_model(laser_wl, optical_path, calmodel_path):
-    print("load_calibration_model")
+    logger.info("load_calibration_model")
     pkl_files = [file for file in os.listdir(calmodel_path) if file.endswith(".pkl")]
     for modelfile in pkl_files:
         tags = os.path.basename(modelfile).replace(".pkl", "").split("_")
@@ -416,3 +422,29 @@ def create_ycal(spe_srm, xcalmodel=None, cert_srm=None, window_length=0):
         srm_calibrated.y = maxy*srm_calibrated.y/max(srm_calibrated.y)
     ycal = YCalibrationComponent(cert_srm.wavelength, srm_calibrated, cert_srm)
     return ycal, srm_calibrated
+
+
+def init_logging(log_dir, log_file="vamas_p6.log", level=logging.INFO):
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log_file = log_dir / log_file
+
+    root = logging.getLogger()
+
+    # HARD reset (critical)
+    root.handlers.clear()
+    root.setLevel(level)
+
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+
+    file_handler = logging.FileHandler(log_file)
+    file_handler.setFormatter(formatter)
+
+    stream_handler = logging.StreamHandler(sys.stdout)
+    stream_handler.setFormatter(formatter)
+
+    root.addHandler(file_handler)
+    root.addHandler(stream_handler)
+
+    return logging.getLogger(__name__)

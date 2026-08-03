@@ -2,6 +2,7 @@ import pandas as pd
 import os.path
 from pathlib import Path
 from utils import (load_config, load_calibration_model)
+from ramanchada2.protocols.calibration.serialization import export_cwa_y
 from ramanchada2.protocols.calibration.ycalibration import (
     YCalibrationComponent, CertificatesDict)
 import matplotlib.pyplot as plt
@@ -9,7 +10,7 @@ import traceback
 import pickle
 import warnings
 from utils import (
-    toc_heading
+    toc_heading, get_config_units, init_logging
     )
 
 # + tags=["parameters"]
@@ -18,8 +19,12 @@ config_templates = None
 config_root = None
 key = None
 upstream = None
+pst_tag = None
+apap_tag = None
 # -
 
+
+logger = init_logging(Path(product["nb"]).parent , f"spectracaly_{key}.log")
 
 _config = load_config(os.path.join(config_root, config_templates))
 warnings.filterwarnings('ignore')
@@ -56,8 +61,10 @@ def main(df, calmodel_path, config):
         for cert in certs:
             matching_row = op_data.loc[(op_data["sample"] == cert) | (op_data["sample"] == cert.replace("EL0", "ELO")) ]
             if matching_row.empty:
+                logger.warning(f"{laser_wl} {optical_path} {cert} Not Found")
                 continue
-            print(cert)
+            else:
+                logger.info(f"{laser_wl} {optical_path} {cert} Found")
             fig, axes = plt.subplots(1, 3, figsize=(15, 3))
             for i in [0, 1, 2]:
                 axes[i].grid()
@@ -70,17 +77,32 @@ def main(df, calmodel_path, config):
             except Exception as err:
                 traceback.print_exc()
                 xcalmodel = None
+            # No savgol pre-smoothing: YCalibrationComponent now fits the measured
+            # reference with the certificate's own functional form, which denoises
+            # analytically (and does not distort the amplitude as smoothing did).
             ycal, srm_calibrated = create_ycal(
-                srm_spe, xcalmodel=xcalmodel, cert_srm=certs[cert], window_length=40)
+                srm_spe, xcalmodel=xcalmodel, cert_srm=certs[cert], window_length=0)
             # save y model
             with open(os.path.join(product["ycalmodels"],
-                                    f"ycalmodel_{laser_wl}_{optical_path}.pkl"), "wb") as f:
+                                    f"ycalmodel_{laser_wl}_{optical_path}_{cert}.pkl"), "wb") as f:
                 pickle.dump(ycal, f)
+            # portable formats (CWA 18133 §8): intensity-factor curve CSV + full model JSON
+            try:
+                export_cwa_y(
+                    ycal,
+                    os.path.join(product["ycalmodels"],
+                                 f"ycalmodel_{laser_wl}_{optical_path}_{cert}_cwa"),
+                    metadata={"key": key, "optical_path": optical_path,
+                              "laser_wl": int(laser_wl), "certificate": cert},
+                    x_calibration_ref=f"calmodel_{laser_wl}_{optical_path}.json",
+                )
+            except Exception:
+                traceback.print_exc()
         
             srm_spe.plot(ax=axes[0].twinx(), label='measured')
             srm_calibrated.plot(ax=axes[0].twinx(),
                                 color='green', fmt='--')
-            for index, tag in enumerate(["PST", "APAP"]):
+            for index, tag in enumerate([pst_tag, apap_tag]):
                 matching_row = op_data.loc[(op_data["sample"] == tag)]
                 if matching_row.empty:
                     continue

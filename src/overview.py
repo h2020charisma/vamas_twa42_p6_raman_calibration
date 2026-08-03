@@ -10,6 +10,8 @@ from utils import (
     )
 from utils import read_template, get_config_excludecols, parse_numeric_value
 import traceback
+import pandas as pd
+from ramanchada2.spectrum import Spectrum
 
 
 # + tags=["parameters"]
@@ -19,7 +21,9 @@ config_root = None
 config_output = None
 path_output = None
 keys = None
+resolution = None
 # -
+
 
 import warnings
 warnings.filterwarnings(
@@ -38,10 +42,11 @@ templates = _config["templates"]
 # --- Table of Contents ---
 toc_heading(_config.get("title", "Overview"),"h1")
 toc_link(os.path.relpath(config_root, config_output), label="The data is in the folder:")
-toc_link( os.path.relpath(_config_path, config_output), label="The configuration is in this file:")
+toc_link(os.path.relpath(_config_path, config_output), label="The configuration is in this file:")
 toc_link(os.path.relpath(config_output, config_output),label="The processing results will be in the folder:")
 toc(templates.keys())
 
+all_dfs = []
 # --- Detailed Entries ---
 for index, (_entry, data) in enumerate(templates.items()):
     toc_anchor(index, _entry)
@@ -71,6 +76,7 @@ for index, (_entry, data) in enumerate(templates.items()):
     humidity_col = "humidity"
     temperature_col = "temperature"
     overexposed_col = "overexposed"
+    provider_col = "provider"
     for col in [humidity_col, temperature_col]:
         df[col] = df[col].apply(parse_numeric_value)
     df["file_extension"] = (
@@ -78,7 +84,13 @@ for index, (_entry, data) in enumerate(templates.items()):
         .astype(str)
         .str.extract(r"\.([^.]+)$")[0]   # capture text after the last '.'
         .str.lower()
-    )        
+    )     
+    print(df.columns)
+    #display(df[["sample", "laser_wl", "provider"]])   
+    df["id"] = _entry
+    all_dfs.append(df[["id", "provider", 'instrument_make', 'instrument_model',  "optical_path", "laser_wl", "sample", "file_name"] ])
+    #print(_entry)
+    #print(data)
     try:
         summary = (
             df.groupby("sample")
@@ -94,7 +106,8 @@ for index, (_entry, data) in enumerate(templates.items()):
                 humidity_col: lambda x: f"{x.mean():.1f} ± {x.std():.1f}" if len(x.dropna()) > 0 else "NA",
                 temperature_col: lambda x: f"{x.mean():.1f} ± {x.std():.1f}" if len(x.dropna()) > 0 else "NA",
                 "file_extension": lambda x: ", ".join(sorted(x.dropna().unique())),
-                file_col:  "count"
+                file_col:  "count",
+                provider_col: lambda x: ", ".join(sorted(x.dropna().unique())),
             })
             .rename(columns={
             path_col: "optical_paths",
@@ -113,6 +126,7 @@ for index, (_entry, data) in enumerate(templates.items()):
         display(summary)
     except Exception:
         traceback.print_exc()
+
 
     # collapsible table
     toc_collapsible(summary="Preview of grouped metadata", content=df[groupby_cols].head().to_html(index=False))
@@ -137,3 +151,41 @@ for index, (_entry, data) in enumerate(templates.items()):
     toc_link(os.path.relpath(f"{path_output}/{_entry}", config_output))
 
     display(HTML('<p><a href="#top">Back to top</a></p>'))
+
+all_df = pd.concat(all_dfs, ignore_index=True)
+for idx, row in all_df.iterrows():
+    try:
+        if resolution and not row["sample"].startswith("T"):
+            spe = Spectrum.from_local_file(row["file_name"])
+            all_df.at[idx, "status"] = "OK"
+            all_df.at[idx, "resolution"] = len(spe.x)
+            all_df.at[idx, "x_min"] = min(spe.x)
+            all_df.at[idx, "x_max"] = max(spe.x)
+    except Exception as err:
+        all_df.at[idx, "status"] = "error"
+        all_df.at[idx, "error"] = err
+
+summary_counts = (
+    all_df
+    .groupby(["id", "provider", 'instrument_make', 'instrument_model',  "optical_path", "laser_wl", "sample"] )
+    .size()
+    .reset_index(name="count")
+)
+display(summary_counts)
+
+all_df.to_excel(product["data"], index=False)
+
+
+with pd.ExcelWriter(
+    product["data"],
+    engine="openpyxl",
+    mode="a",
+    if_sheet_exists="replace"  # or "overlay"
+) as writer:
+    summary_counts.to_excel(
+        writer,
+        sheet_name="Summary",
+        index=False
+    )
+
+display(HTML('<p><a href="#top">Back to top</a></p>'))

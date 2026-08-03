@@ -11,8 +11,8 @@ metadata from ~25 participants, performs wavenumber (x) and relative-intensity (
 verifies and compares results across providers, and produces HTML/Excel reports.
 
 Core Raman processing lives in the external [ramanchada2](https://github.com/h2020charisma/ramanchada2)
-library (see `[tool.uv.sources]` in `pyproject.toml` — it is used as an **editable local dependency**
-at `../ramanchada2`).
+library (see `[tool.uv.sources]` in `pyproject.toml` — it can be pinned to an editable local checkout
+for development; the path is machine-specific and should not be committed).
 
 ## Environment & commands
 
@@ -46,6 +46,7 @@ cd src && uv run ploomber task spectraframe_P6_0101     # run one task
   - `spectraframe_load.py` → parse metadata + spectra, subtract background, store to `.h5`/`.xlsx`
   - `spectraframe_calibrate.py` → wavenumber (x) calibration
   - `spectraframe_ycalibrate.py` → relative-intensity (y) calibration
+  - `spectraframe_resolution.py` → spectral distribution / pixel / spectral resolution curves
   - `calibration_verify.py` → cross-provider comparison, QA reports (grid: `x`, `xy`)
   - `calibration_analysis.py`, `matched_peaks_analysis.py` → post-hoc analysis
   - `spectraframe_tips.py`, `qmatch.py`, `release.py` → twinning, matching QC, release copy
@@ -55,6 +56,9 @@ cd src && uv run ploomber task spectraframe_P6_0101     # run one task
   units, peak-find/fit kwargs, skip lists). Real one is referenced via `config_templates` in env.
 - `README_*.md` — deep-dive docs (`README_pipeline.md`, `README_config.md`, `README_input.md`,
   `README_ploomber.md`, `README_overview.md`, `README_template.md`).
+- `docs/*.md` — CWA-protocol reference docs: `cwa18133_summary.md` / `cwa18134_summary.md` (protocol
+  summaries), `xcalibration.md` / `ycalibration.md` / `resolution_curves.md` (definitions + calculation
+  of the x/y-calibration models and the CWA §3–4 resolution curves, with pointers into ramanchada2).
 
 ## Working with the pipeline scripts
 
@@ -80,9 +84,9 @@ The `src/*.py` stages are **not plain scripts** — Ploomber executes them as pa
 - The `processed_{fit_ne_peaks}_{match_mode}_{interpolator}` output-folder pattern encodes the run
   configuration; several products live under it and are keyed off env values.
 - Match modes: `match_mode` (e.g. `cluster`); interpolators: `pchip`, `rbf` (see `matchpeaks.py`).
-- `pipeline.yaml` currently contains at least one **hardcoded absolute Windows path** in
-  `calibration_analysis` (`sample_peaks: C:\\Users\\jelia\\...`). Treat such paths as machine-specific;
-  don't propagate them.
+- `pipeline.yaml` currently contains at least one **hardcoded absolute machine-specific path** (the
+  `sample_peaks` param under `calibration_analysis`). Treat such paths as machine-specific; don't
+  propagate them into new code or docs.
 
 ## Contribution etiquette (from CONTRIBUTING.md)
 

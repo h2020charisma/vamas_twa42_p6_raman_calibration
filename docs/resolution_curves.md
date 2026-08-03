@@ -99,6 +99,27 @@ Calculation (`fit_neon_peaks` + `fit_pixel_resolution_curve`):
 so it agrees with a single independent resolution measurement from the
 calcite ~1085.91 cm⁻¹ band — the **"laser effect"** correction.
 
+**Why only one point is needed, unlike the neon curve:** CWA §3.1.10 defines
+spectral resolution directly as the calcite FWHM (SRes ≡ calcite FWHM), and
+§4 uses it to *adjust* the already-fitted pixel resolution curve rather than
+to fit a new one — the CWA panel only specifies one calcite band
+(~1085.91 cm⁻¹, Table 7) for this purpose, so there is no dense grid of
+independent calcite measurements the way there is for neon lines. The
+underlying physical reason a single point suffices: neon lines are
+intrinsically ~zero width, so their FWHM measures pure instrument response,
+whereas the calcite band carries real molecular linewidth on top of that
+response, giving access to true spectral resolution that neon cannot
+provide at all — but only at the one position calcite is measured. Rather
+than fit an independent curve from that single value, the method **reuses
+the shape already fitted from neon** and assumes only the *scale* differs
+between pixel resolution and spectral resolution (the "laser effect", e.g.
+contributions such as laser linewidth that neon is blind to but calcite
+reveals). One calcite point is exactly enough to fix that one scale factor
+— a single-point calibration of an existing curve, not an independent curve
+fit. This also means the whole spectral resolution curve stands or falls on
+that one point, which is why step 4 below guards it rather than trusting it
+unconditionally.
+
 Calculation (`fit_calcite_1085` + `spectral_resolution_e2529`):
 
 1. Voigt-fit the calcite peak nearest 1085.91 cm⁻¹ (Gaussian fallback if the

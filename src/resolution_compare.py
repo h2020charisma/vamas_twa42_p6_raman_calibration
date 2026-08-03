@@ -170,7 +170,7 @@ def plot_sres_bars(summary):
         "<b>Figure 1.</b> Spectral resolution (CWA 18133 §3.1.10) of each "
         "instrument/optical path, derived from the FWHM of the calcite "
         "~1085.91 cm⁻¹ band via the ASTM E2529 formula "
-        "(SRes = FWHM / 0.684 &minus; 1.029). Bars are grouped by laser "
+        "(SRes = (FWHM &minus; 0.684) / 1.0209). Bars are grouped by laser "
         "wavelength (color, see legend) because resolution is not "
         "comparable across different excitation wavelengths. A lower bar "
         "means a sharper (better-resolving) instrument. Instruments without "

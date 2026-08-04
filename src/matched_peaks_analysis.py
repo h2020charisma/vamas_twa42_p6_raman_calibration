@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -459,7 +460,92 @@ def plot_calibration_analysis(df, units="nm", output_path='calibration_analysis_
                 ax.grid(True, alpha=0.3)
     
     plt.savefig(output_path, dpi=150, bbox_inches='tight')
-    print(f"\n📊 Saved: {output_path}")
-    
+    print(f"\n📊 Saved: {os.path.relpath(output_path)}")
+
     return fig
+
+
+def plot_peak_stability_across_providers(df, units="nm", before_after=None):
+    """
+    Per reference peak, show how the detected/fitted position varies across
+    providers (key + optical_path), to check whether individual peaks
+    (e.g. specific Polystyrene lines) are stable across labs/instruments.
+
+    Args:
+        df: matched_peaks-style DataFrame (see analyze_peak_matching_quality
+            for expected columns).
+        units: unit label used on axes ("nm" or "cm-1").
+        before_after: which calibration stage to plot. Defaults to the last
+            stage (sorted), typically the fully calibrated one.
+
+    Returns:
+        (fig, summary_df) where summary_df has one row per
+        (reference, key, optical_path) with mean/std of the detected position
+        and error, restricted to inliers.
+    """
+    df = df.copy()
+    if 'error_nm' not in df.columns:
+        df['error_nm'] = df['spe'] - df['reference']
+
+    if before_after is None:
+        before_after = sorted(df['before_after'].unique())[-1]
+
+    df = df[(df['before_after'] == before_after) & (df['inlier_mask'] == True)].copy()
+    df['lab_path'] = df['key'] + '_' + df['optical_path']
+
+    references = sorted(df['reference'].unique())
+    lab_paths = sorted(df['lab_path'].unique())
+
+    summary_list = []
+    for reference in references:
+        for lab_path in lab_paths:
+            subset = df[(df['reference'] == reference) & (df['lab_path'] == lab_path)]
+            if len(subset) == 0:
+                continue
+            summary_list.append({
+                'reference': reference,
+                'lab_path': lab_path,
+                'n': len(subset),
+                'spe_mean': subset['spe'].mean(),
+                'spe_std': subset['spe'].std(),
+                'error_mean': subset['error_nm'].mean(),
+                'error_std': subset['error_nm'].std(),
+            })
+    summary_df = pd.DataFrame(summary_list)
+
+    n_refs = len(references)
+    n_cols = min(3, n_refs) if n_refs > 0 else 1
+    n_rows = int(np.ceil(n_refs / n_cols)) if n_refs > 0 else 1
+
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(6 * n_cols, 4 * n_rows), squeeze=False)
+    axes = axes.flatten()
+
+    colors = plt.cm.tab10(np.linspace(0, 1, len(lab_paths))) if len(lab_paths) > 0 else []
+    lab_path_color = dict(zip(lab_paths, colors))
+
+    for idx, reference in enumerate(references):
+        ax = axes[idx]
+        sub = summary_df[summary_df['reference'] == reference].sort_values('lab_path')
+        if len(sub) == 0:
+            continue
+        x = np.arange(len(sub))
+        ax.errorbar(x, sub['error_mean'], yerr=sub['error_std'], fmt='o', markersize=8,
+                    capsize=5, color='#2E86AB', ecolor='#2E86AB', alpha=0.9,
+                    linewidth=2, markeredgecolor='black', markeredgewidth=0.5)
+        ax.axhline(0, color='black', linestyle='--', alpha=0.5, linewidth=1.5)
+        ax.set_xticks(x)
+        ax.set_xticklabels(sub['lab_path'], rotation=90, ha='center', fontsize=8)
+        ax.set_ylabel(f'Error ({units})', fontsize=10, fontweight='bold')
+        ax.set_title(f'Reference {reference:g} {units}', fontsize=11, fontweight='bold')
+        ax.grid(True, alpha=0.3)
+        ax.margins(x=0.1)
+
+    for idx in range(n_refs, len(axes)):
+        axes[idx].set_visible(False)
+
+    fig.suptitle(f'Peak position stability across providers ({before_after})',
+                 fontsize=13, fontweight='bold')
+    plt.tight_layout()
+
+    return fig, summary_df
 

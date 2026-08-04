@@ -3,7 +3,8 @@ from matched_peaks_analysis import (
     analyze_peak_matching_quality,
     compare_before_after_calibration,
     analyze_systematic_vs_random_errors,
-    plot_calibration_analysis
+    plot_calibration_analysis,
+    plot_peak_stability_across_providers
 )
 from IPython.display import display
 import matplotlib.pyplot as plt
@@ -68,11 +69,22 @@ try:
         try:
             fig = plot_calibration_analysis(
                 mp,  units=units, output_path=product["analysis"])
-            plt.show()   
+            plt.show()
         except Exception as err:
             logger.error(err)
             traceback.print_exc()
-         
+
+        if mp["reference"].nunique() > 1:
+            toc_heading(f"{sample} peak stability across providers", "h3")
+            try:
+                fig, stability_summary = plot_peak_stability_across_providers(
+                    mp, units=units)
+                plt.show()
+                toc_collapsible("Table", stability_summary._repr_html_())
+            except Exception as err:
+                logger.error(err)
+                traceback.print_exc()
+
     matched_peaks.to_csv(product["matched_peaks"], index=False)
 except Exception as err:
     traceback.print_exc()

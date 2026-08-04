@@ -63,7 +63,7 @@ def plot_model(calmodel, entry, laser_wl, optical_path, spe_sils=None, spe_units
     calmodel.plot(ax=ax1)
     ax1.grid()
     si_peak = calmodel.components[1].model
-    ax1.axvline(x=si_peak, color='black', linestyle='--', linewidth=2, label="Si peak {:.3f} nm".format(si_peak))    
+    ax1.axvline(x=si_peak, color='black', linestyle='--', linewidth=2, label="Si peak {:.3f} nm".format(si_peak))
     if spe_sils is not None:
         for spe_sil in spe_sils:
             sil_calibrated = calmodel.apply_calibration_x(spe_sil, spe_units=spe_units )
@@ -223,7 +223,7 @@ for key in upstream["spectracal_*"].keys():
                     _stages = ["1.original","2.x-clbr"]
                 _refs = get_reference_peaks(tag)
                 if _refs is not None:       
-                    logger.info(f"{entry} {laser_wl} {optical_path} match_peaks4analysis {tag}")             
+                    logger.debug(f"{entry} {laser_wl} {optical_path} match_peaks4analysis {tag}")             
                     df_calib = match_peaks4analysis(
                         spectra =_spectra,
                         ref=_refs,                        

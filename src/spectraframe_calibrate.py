@@ -398,7 +398,8 @@ try:
     display(systematic_analysis)
     # Visualize
     fig = plot_calibration_analysis(
-        matched_peaks, os.path.join(Path(product["nb"]).parent,'calibration_analysis_comprehensive.png'))
+        matched_peaks,
+        output_path=os.path.join(Path(product["nb"]).parent, 'calibration_analysis_comprehensive.png'))
     plt.show()    
 except Exception as err:
     traceback.print_exc()

@@ -273,7 +273,7 @@ try:
             "point-wise worst (largest FWHM) resolution across all "
             "instruments at that laser wavelength - the resolution every "
             "instrument's spectrum would need to be degraded to for a "
-            "resolution-matched, apples-to-apples comparison (CWA "
+            "resolution-matched comparison (CWA "
             "objective 2).")
 
         fig, ax3 = plt.subplots(figsize=(7.5, 4))

@@ -37,4 +37,13 @@ repository = "https://github.com/h2020charisma/vamas_twa42_p6_raman_calibration"
 
 [tool.uv.sources]
 ramanchada2 = { path = "../ramanchada2", editable = true }
+pyambit = { path = "../pyambit-main", editable = true }
+
+[dependency-groups]
+dev = ["pytest~=8.4"]
+
+[tool.pytest.ini_options]
+# src/tests/ holds standalone reproduction/stress scripts (not a pytest suite; some
+# execute side-effectful code on import) - scope collection to the real suite instead.
+testpaths = ["tests"]
 

@@ -37,7 +37,15 @@ def make_release(
     if exclude_folders is None:
         exclude_folders = []
 
-    allowed_ext = {'.html', '.ipynb', '.pkl', '.xls', '.xlsx', '.xlsm'}
+    allowed_ext = {'.html', '.ipynb', '.pkl', '.xls', '.xlsx', '.xlsm', '.nxs'}
+    # CWA 18133 §8 portable calibration files (calmodel_*_cwa.csv/.json,
+    # ycalmodel_*_cwa.csv/.json) and the NeXus export manifest are the
+    # language-independent deliverables computed by the pipeline; everything else in
+    # .csv/.json (matched_peaks*, resolution_*, config JSON, ...) is diagnostic output,
+    # not release material, so the filter is by suffix rather than opening the allowlist
+    # to every .csv/.json in the tree.
+    released_suffix_ext = {'.csv', '.json'}
+    released_suffixes = ('_cwa.csv', '_cwa.json', 'nexus_manifest.csv')
     records = []
 
     for root, dirs, files in os.walk(input_folder):
@@ -51,8 +59,10 @@ def make_release(
 
         for file in files:
             _, ext = os.path.splitext(file)
-            if ext.lower() not in allowed_ext:
-                continue
+            ext = ext.lower()
+            if ext not in allowed_ext:
+                if not (ext in released_suffix_ext and file.endswith(released_suffixes)):
+                    continue
 
             src_path = os.path.join(root, file)
             dest_dir = os.path.join(output_folder, rel_root)
@@ -90,7 +100,15 @@ def make_release(
             elif file.startswith("calmodel"):
                 description = "calibration model"
             elif file.startswith("ycalmodel"):
-                description = "relative intensity calibration model"                
+                description = "relative intensity calibration model"
+            elif file.endswith("_calibration.nxs"):
+                description = "NeXus calibration bundle (calibrants + reconstructable model)"
+            elif file.endswith(".nxs"):
+                description = "NeXus spectra"
+            elif file == "nexus_manifest.csv":
+                description = "NeXus export manifest"
+            elif "_cwa" in file:
+                description = "CWA 18133 §8 portable calibration"
             link = f"<a href='{rel_file_path}' target='_blank'>{file}</a>"
 
             records.append({

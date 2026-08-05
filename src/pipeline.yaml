@@ -127,6 +127,33 @@ tasks:
       mode: ["x", "xy"]
 
 
+  # CWA 18133 §8 / NXcalibration: the calibration workflow as a self-describing
+  # NeXus record — calibrants, processing, and the reconstructable model.
+  - source: spectraframe_nexus.py
+    name: "spectranexus_[[key]]"
+    upstream: ["spectraframe_*", "spectracal_*", "spectracaly_*"]
+    product:
+      nb: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/spectranexus.{{report_format}}"
+      nexus: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/nexus"
+      manifest: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/nexus_manifest.csv"
+    params:
+      config_templates: "{{config_templates}}"
+      config_root: "{{config_root}}"
+      neon_tag: "{{ne_tag}}"
+      si_tag: "{{si_tag}}"
+      pst_tag: "{{pst_tag}}"
+      apap_tag: "{{apap_tag}}"
+      calcite_tag: "{{calcite_tag}}"
+      test_tags: "S0N"
+      match_mode: "{{match_mode}}"
+      interpolator: "{{interpolator}}"
+    nbconvert_export_kwargs:
+        # optionally hide the code from the report
+        exclude_input: True
+    grid:
+      key: "{{calibration_key}}"
+
+
   - source: calibration_analysis.py
     upstream: ["spectracal_*", "calibration_verify_xy"]
     name: "calibration_analysis"    
@@ -160,7 +187,7 @@ tasks:
 
 
   - source: release.py
-    upstream: ["calibration_verify_*"]
+    upstream: ["calibration_verify_*", "spectranexus_*"]
     product: 
       nb: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/assessment/release.html"
     params:

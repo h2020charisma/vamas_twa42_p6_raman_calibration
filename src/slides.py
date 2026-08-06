@@ -312,8 +312,8 @@ def add_figure(slot, result):
         logger.warning(f"figure {slot} not produced: {caption}")
 
 
-add_figure("neon", neon_figure(ne, fig_dir))
-add_figure("samples", error_bars_figure(samples, fig_dir))
+add_figure("neon", neon_figure(df_ne, fig_dir))
+add_figure("samples", error_bars_figure(df_samples, fig_dir))
 add_figure("resolution_spread", resolution_spread_figure(df_res, fig_dir))
 add_figure("resolution_curves", resolution_curves_figure(df_curves, fig_dir))
 add_figure("intensity_correction",

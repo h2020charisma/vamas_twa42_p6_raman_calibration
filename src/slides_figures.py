@@ -148,89 +148,128 @@ def resolution_curves_figure(df_curves, out_dir, filename="resolution_curves.png
     return path.name, caption
 
 
-def error_bars_figure(samples, out_dir, filename="sample_errors.png",
+def error_bars_figure(df_samples, out_dir, filename="sample_errors.png",
                       stages=("1.original", "2.x-clbr", "3.y-clbr")):
-    """Mean |error| with standard-deviation bars per material and stage.
+    """Deviation from reference sample peak positions, as boxplots.
 
-    The SD bar is the point of this figure: a median alone hides that the
-    spread, not just the centre, changes between stages.
+    One panel per material, one box per stage, built from one mean |error|
+    per optical path (an optical path contributes several matched peaks, so
+    it is collapsed to its mean first — the box then shows how paths differ
+    from each other, not how peaks differ within a path). Points are the
+    individual optical paths, jittered, matching the neon boxplot's style so
+    the two "before/after" results in the deck read as the same kind of
+    picture.
     """
-    if samples is None or samples.empty:
+    if df_samples is None or df_samples.empty:
         return None, "no sample statistics available"
 
-    materials = sorted(samples["sample"].unique())
+    df = df_samples.copy()
+    df["abs_d"] = pd.to_numeric(df["distances"], errors="coerce").abs()
+    per_path = (df.groupby(["sample", "before_after", "key", "laser_wl",
+                             "optical_path"])["abs_d"]
+                  .mean().reset_index())
+
+    materials = sorted(per_path["sample"].unique())
     if not materials:
         return None, "no materials in sample statistics"
 
-    fig, ax = plt.subplots(figsize=(7.2, 3.4))
-    width = 0.8 / max(len(stages), 1)
-    positions = np.arange(len(materials))
+    fig, axes = plt.subplots(1, len(materials),
+                             figsize=(2.9 * len(materials), 3.6),
+                             squeeze=False, sharey=False)
+    rng = np.random.default_rng(0)
+    for col, material in enumerate(materials):
+        ax = axes[0][col]
+        sub = per_path.loc[per_path["sample"] == material]
+        data = [sub.loc[sub["before_after"] == s, "abs_d"].to_numpy(dtype=float)
+                for s in stages]
+        data = [d[np.isfinite(d)] for d in data]
+        bp = ax.boxplot(data, showfliers=False, widths=0.5, patch_artist=True)
+        for i, (patch, vals) in enumerate(zip(bp["boxes"], data)):
+            patch.set_facecolor(PALETTE[i % len(PALETTE)])
+            patch.set_alpha(0.35)
+            patch.set_edgecolor(PALETTE[i % len(PALETTE)])
+            if vals.size:
+                jitter = rng.uniform(-0.12, 0.12, size=vals.size)
+                ax.scatter(np.full(vals.size, i + 1) + jitter, vals, s=8,
+                           color=PALETTE[i % len(PALETTE)], alpha=0.6,
+                           linewidths=0, zorder=3)
+        for line in bp["medians"]:
+            line.set_color("#2a2a2a")
+            line.set_linewidth(1.4)
+        ax.set_xticks(range(1, len(stages) + 1))
+        ax.set_xticklabels([s.split(".", 1)[-1] for s in stages],
+                           rotation=30, ha="right", fontsize=7)
+        _style(ax, "", "|error| / cm$^{-1}$", material)
 
-    for j, stage in enumerate(stages):
-        means, sds = [], []
-        for material in materials:
-            row = samples.loc[(samples["sample"] == material)
-                              & (samples["stage"] == stage)]
-            means.append(float(row["mean"].iloc[0]) if len(row) else np.nan)
-            sd = float(row["sd"].iloc[0]) if len(row) else np.nan
-            sds.append(0.0 if not np.isfinite(sd) else sd)
-        offset = (j - (len(stages) - 1) / 2) * width
-        label = stage.split(".", 1)[-1]
-        ax.bar(positions + offset, means, width=width * 0.92,
-               yerr=sds, capsize=3, label=label,
-               color=PALETTE[j % len(PALETTE)],
-               error_kw=dict(linewidth=0.9, ecolor="#4a4a4a"))
-
-    ax.set_xticks(positions)
-    ax.set_xticklabels(materials)
-    _style(ax, "", "Mean |error| / cm$^{-1}$  (bars: 1 SD)")
-    ax.legend(fontsize=8, frameon=False)
     fig.tight_layout()
     path = Path(out_dir) / filename
     fig.savefig(path, **FIG_KW)
     plt.close(fig)
-    return path.name, ("Mean absolute deviation from  reference sample peak positions; "
-                       "error bars are one standard deviation")
+    return path.name, ("Each point is one optical path's mean |error| "
+                       "against reference sample peak positions; box shows "
+                       "median and IQR across optical paths")
 
 
-def neon_figure(ne, out_dir, filename="neon_residuals.png"):
-    """Neon anchor residual before and after calibration, with SD bars."""
-    if ne is None or ne.empty:
-        return None, "no neon statistics available"
+def neon_figure(df_ne, out_dir, filename="neon_residuals.png"):
+    """Neon anchor residual before and after calibration, as boxplots.
 
-    per_laser = ne.loc[ne["laser_wl"] != "all"]
-    lasers = sorted(per_laser["laser_wl"].unique())
-    if not lasers:
-        return None, "no per-laser neon statistics"
+    One box per (laser, stage) over every matched neon line from every
+    optical path: median, IQR and whiskers, with individual lines are shown
+    as a jittered scatter so outliers are still visible as points rather than
+    hidden in a whisker. A mean+-SD bar chart understates the before/after
+    story here because the "before" distribution is exactly the
+    heavy-tailed one the calibration is meant to fix.
+    """
+    if df_ne is None or df_ne.empty:
+        return None, "no neon data available"
 
-    fig, ax = plt.subplots(figsize=(5.4, 3.2))
+    df = df_ne.copy()
+    if "sample" in df.columns:
+        df = df.loc[df["sample"].astype(str).str.strip() == "Ne"]
+    df["abs_d"] = pd.to_numeric(df["distances"], errors="coerce").abs()
+    df = df.loc[df["abs_d"].notna()]
     stages = ["1.original", "2.Ne_clbr"]
-    width = 0.36
-    positions = np.arange(len(lasers))
-    for j, stage in enumerate(stages):
-        means, sds = [], []
-        for laser in lasers:
-            row = per_laser.loc[(per_laser["laser_wl"] == laser)
-                                & (per_laser["stage"] == stage)]
-            means.append(float(row["mean"].iloc[0]) if len(row) else np.nan)
-            sd = float(row["sd"].iloc[0]) if len(row) else np.nan
-            sds.append(0.0 if not np.isfinite(sd) else sd)
-        offset = (j - 0.5) * width
-        ax.bar(positions + offset, means, width=width * 0.92, yerr=sds,
-               capsize=3, label=stage.split(".", 1)[-1],
-               color=PALETTE[j % len(PALETTE)],
-               error_kw=dict(linewidth=0.9, ecolor="#4a4a4a"))
+    df = df.loc[df["before_after"].isin(stages)]
 
-    ax.set_xticks(positions)
-    ax.set_xticklabels([f"{w} nm" for w in lasers])
-    _style(ax, "", "Mean |residual| / nm  (bars: 1 SD)")
-    ax.legend(fontsize=8, frameon=False)
+    lasers = sorted(df["laser_wl"].dropna().unique())
+    if not lasers:
+        return None, "no per-laser neon data"
+
+    fig, axes = plt.subplots(1, len(lasers), figsize=(3.4 * len(lasers), 3.6),
+                             squeeze=False, sharey=True)
+    rng = np.random.default_rng(0)
+    for col, laser in enumerate(lasers):
+        ax = axes[0][col]
+        sub = df.loc[df["laser_wl"] == laser]
+        data = [sub.loc[sub["before_after"] == s, "abs_d"].to_numpy(dtype=float)
+                for s in stages]
+        data = [d[np.isfinite(d)] for d in data]
+        bp = ax.boxplot(data, showfliers=False, widths=0.5, patch_artist=True)
+        for i, (patch, vals) in enumerate(zip(bp["boxes"], data)):
+            patch.set_facecolor(PALETTE[i % len(PALETTE)])
+            patch.set_alpha(0.35)
+            patch.set_edgecolor(PALETTE[i % len(PALETTE)])
+            if vals.size:
+                jitter = rng.uniform(-0.12, 0.12, size=vals.size)
+                ax.scatter(np.full(vals.size, i + 1) + jitter, vals, s=8,
+                           color=PALETTE[i % len(PALETTE)], alpha=0.6,
+                           linewidths=0, zorder=3)
+        for line_key in ("medians",):
+            for line in bp[line_key]:
+                line.set_color("#2a2a2a")
+                line.set_linewidth(1.4)
+        ax.set_xticks([1, 2])
+        ax.set_xticklabels([s.split(".", 1)[-1] for s in stages])
+        title = f"{laser:g} nm" if isinstance(laser, (int, float)) else str(laser)
+        _style(ax, "", "|residual| / nm" if col == 0 else "", title)
+
     fig.tight_layout()
     path = Path(out_dir) / filename
     fig.savefig(path, **FIG_KW)
     plt.close(fig)
     return path.name, ("Neon peak positions against matched NIST lines, "
-                       "before and after calibration")
+                       "before and after calibration; each point is one "
+                       "matched line, box shows median and IQR")
 
 
 def resolution_spread_figure(df_res, out_dir, filename="resolution_spread.png"):

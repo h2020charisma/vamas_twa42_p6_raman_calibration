@@ -211,7 +211,7 @@ def _title_slide(ctx):
 <div style="flex:1;display:flex;flex-direction:column;justify-content:center;max-width:80%">
   <div class="eyebrow">VAMAS TWA42 &middot; Project 6</div>
   <h1 class="title"> Automated processing tools to analyse the results of an interlaboratory study: wavenumber and relative intensity calibration of Raman spectrometers</h1>
-  <p class="lede">Implementation and assessment of the CWA 18133:2024 calibration protocol using neon emission lamp for wavenumber calibration, a silicon reference for Raman shift, calcite and polystyrene reference samples for resolution and calibration assessment, and a NIST SRM / traceable LED broadband intensity reference. Samples provided by ELODIZ.</p>
+  <p class="lede">Implementation and assessment of the CWA 18133:2024 calibration protocol using neon emission lamp for wavenumber calibration, a silicon reference for Raman shift, calcite and polystyrene reference samples for resolution and calibration assessment, and a NIST SRM / certified broadband LED intensity reference. Samples provided by ELODIZ.</p>
   <p class="lede" style="margin-top:0.8rem">
   {f'Of approximately {total} laboratories in the study, ' if total else ''}
   <b>{ctx['n_keys']}</b> contributed complete enough measurements to be calibrated,
@@ -324,7 +324,7 @@ def _pipeline_slide():
             "Zero the Raman shift axis on it",
         ], "calibration models"),
         ("y-calibration", [
-            "Fit the measured NIST SRM or LED spectrum",
+            "Fit the measured NIST-SRM/LED spectrum",
             "Compare it with its certificate",
             "Derive the relative-intensity correction",
         ], "intensity models"),
@@ -380,9 +380,9 @@ def _app_slide(derive_fig=None, verify_fig=None):
     <ul class="plain">
       <li><b>Convert and export</b> — read common vendor formats; write NeXus, CSV
       and the CWA section 8 calibration files.</li>
-      <li><b>Derive calibration</b> — obtain the wavenumber and intensity
-      correction from neon, silicon and NIST SRM reference measurements.</li>
-      <li><b>Verify</b> — compare peak positions against reference values and
+      <li><b>Derive calibration</b> — obtain the wavenumber from Ne, Si and intensity
+      correction from NIST-SRM/LED reference measurements.</li>
+      <li><b>Verify</b> — compare Si, Calcite and Polystyrene peak positions against reference values and
       compute the resolution curves.</li>
       <li><b>Instruments</b> — record instruments and optical configurations; a
       calibration is bound to a configuration, since it is not transferable
@@ -422,8 +422,7 @@ def _method_slide(ctx):
     <p>An accurate wavelength scale still leaves the Raman shift origin undefined,
     because that depends on the actual laser wavelength, which differs from its
     nominal value. The silicon band at 520.45&nbsp;cm<sup>&minus;1</sup>
-    &mdash; a reliably reproducible reference value, though not a certified
-    one [2] &mdash; is used solely to fix this zero. Both boron-doped Si(100)
+    &mdash; a reliably reproducible reference value [2] &mdash; is used to fix this zero. Both boron-doped Si(100)
     (S0B) and undoped Si(100) (S0N) silicon wafers were used across the
     ILC.</p>
     <p>The silicon band is fitted on the calibrated wavelength scale and its
@@ -465,8 +464,8 @@ def _ycal_method_slide(ycal, fig, caption, ref_fig=None, ref_caption=""):
   <div>
     <p>Every instrument has a wavelength-dependent sensitivity arising from the
     grating, detector and optics. Relative intensity calibration removes it by
-    measuring a broadband emitter &mdash; a certified NIST SRM fluorescent glass or a
-    traceable (but not certified) LED &mdash; and comparing it with its known
+    measuring a broadband emitter &mdash; a NIST-SRM fluorescent glass or a
+    certified LED - and comparing it with its known
     response.</p>
     <p>The measured reference spectrum is fitted with the functional form given in
     its own reference response rather than interpolated directly, which suppresses
@@ -487,28 +486,42 @@ def _ycal_method_slide(ycal, fig, caption, ref_fig=None, ref_caption=""):
 required per optical configuration and is not transferable between them.</div>""")
 
 
-def _worked_example_slide(label, stats_row, figures, slot):
-    """Follow one optical configuration through the whole procedure."""
+def _worked_example_slide(label, stats_row, figures, slot, is_first=False):
+    """Follow one optical configuration through the whole procedure.
+
+    The four panels are the same for every worked example, so the panel-by-panel
+    walkthrough is only spelled out once, on the first slide; later slides go
+    straight to the outcome so the repetition doesn't eat the audience's
+    attention.
+    """
     fig, caption = figures.get(slot, (None, "figure not available"))
     outcome = ""
     if stats_row is not None:
         first = stats_row[f"median_{SAMPLE_STAGES[0]}"]
         outcome = (
-            f" Median absolute deviation of the verification samples for this "
+            f"Median absolute deviation of the verification samples for this "
             f"configuration: {fmt(first, 2)} &rarr; "
             f"<b>{fmt(stats_row['final'], 2)}</b>&nbsp;cm<sup>&minus;1</sup> "
             f"({fmt_pct(stats_row['improvement_pct'])}).")
 
+    if is_first:
+        intro = (
+            "The four panels show what is actually fitted. "
+            "<b>(1)</b> The neon reference spectrum, whose peaks are assigned to "
+            "NIST lines. <b>(2)</b> The wavelength calibration curve fitted "
+            "through those assigned pairs; the points are the surviving matched "
+            "lines after outlier rejection. <b>(3)</b> The silicon band, fitted "
+            "on the corrected wavelength scale, whose position fixes the "
+            "wavenumber origin at 520.45&nbsp;cm<sup>&minus;1</sup>. "
+            "<b>(4)</b> A verification sample on the resulting calibrated scale. "
+            + outcome)
+    else:
+        intro = outcome
+
     return _slide("worked example", f"""
 <h2>Worked example: {_esc(label)}</h2>
 <div class="body" style="grid-template-rows:auto 1fr">
-  <p style="margin:0;max-width:92ch">The four panels show what is actually fitted.
-  <b>(1)</b> The neon reference spectrum, whose peaks are assigned to NIST lines.
-  <b>(2)</b> The wavelength calibration curve fitted through those assigned pairs;
-  the points are the surviving matched lines after outlier rejection.
-  <b>(3)</b> The silicon band, fitted on the corrected wavelength scale, whose
-  position fixes the wavenumber origin at 520.45&nbsp;cm<sup>&minus;1</sup>.
-  <b>(4)</b> A verification sample on the resulting calibrated scale.{outcome}</p>
+  <p style="margin:0;max-width:92ch">{intro}</p>
   {_figure(fig, caption)}
 </div>
 <div class="note">The same sequence runs for every optical configuration; the
@@ -630,21 +643,16 @@ def _samples_slide(samples, overall, artifact_cm1, fig, caption, by_laser=None):
 
     return _slide("9 / 15", f"""
 <h2>Result 2: deviation of reference sample peaks after calibration</h2>
-<div class="body" style="grid-template-rows:auto auto 1fr">
+<div class="body" style="grid-template-rows:auto auto auto 1fr">
   <p style="margin:0;max-width:80ch">Absolute deviation of measured peak positions
   from  reference sample values, in cm<sup>&minus;1</sup>, at each processing stage.
   Silicon is not an independent test, since the Raman shift scale is zeroed on
-  that band; calcite and polystyrene are.</p>
+  that band; calcite and polystyrene are. Median absolute deviation, all
+  materials pooled, excluding assignment artefacts beyond
+  {artifact_cm1:.0f}&nbsp;cm<sup>&minus;1</sup>:
+  <b class="mono">{ov_txt}</b>&nbsp;cm<sup>&minus;1</sup>.</p>
   {table}
-  <div class="cols-2" style="display:grid;gap:1rem;align-items:start">
-    <div class="card">
-      <h3>All materials pooled</h3>
-      <p>Median absolute deviation, excluding assignment artefacts beyond
-      {artifact_cm1:.0f}&nbsp;cm<sup>&minus;1</sup>:
-      <b class="mono">{ov_txt}</b>&nbsp;cm<sup>&minus;1</sup>.</p>
-    </div>
-    {_figure(fig, caption)}
-  </div>
+  {_figure(fig, caption)}
 </div>
 <div class="note">The silicon samples improve substantially, calcite marginally,
 while polystyrene deteriorates slightly: the procedure constrains the scale at the
@@ -946,8 +954,8 @@ def render_deck(ctx, ne, samples, overall, resolution,
         _method_slide(ctx),
         _ycal_method_slide(ycal, *fig("intensity_correction"),
                            *fig("intensity_reference")),
-        *[_worked_example_slide(lbl, st, figures, slot)
-          for lbl, st, slot in (worked_examples or [])],
+        *[_worked_example_slide(lbl, st, figures, slot, is_first=(i == 0))
+          for i, (lbl, st, slot) in enumerate(worked_examples or [])],
         _neon_slide(ne, *fig("neon")),
         _samples_slide(samples, overall, artifact_cm1, *fig("samples"),
                        by_laser=samples_by_laser),

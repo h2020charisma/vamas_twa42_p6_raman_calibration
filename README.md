@@ -170,6 +170,34 @@ uv run ploomber status  # Show task status
 uv run ploomber build --dry-run  # Show what would run
 ```
 
+### Presentation deck
+
+The `slides` task reads the assessment outputs (`calibration_verify_xy`, `calibration_analysis`, `resolution_compare`, `spectrares_*`, `spectracaly_*`, `overview`) and writes a self-contained results deck, so it always reflects the run that produced it. Build it on its own once the upstream tasks have run:
+
+```sh
+uv run ploomber task slides --force
+```
+
+Outputs land in `<config_output>/processed_<fit_ne_peaks>_<match_mode>_<interpolator>/assessment/`:
+
+- `slides_deck.html` — open in a browser or present from it directly
+- `slides_stats.csv` — every number quoted in the deck, as a flat table
+- `figures/` — the plots and any configured screenshots the deck references
+
+## ✅ Testing
+
+Tests live under `tests/` at the repository root (not `src/tests/`, which holds standalone reproduction scripts, some with side effects on import). Run the full suite from the repository root:
+
+```sh
+uv run pytest tests/ -q
+```
+
+Run just the presentation-deck tests:
+
+```sh
+uv run pytest tests/test_slides_content.py tests/test_pipeline_yaml.py -v
+```
+
 ## 🔄 Pipeline Overview
 
 - [Tasks](README_pipeline.md)

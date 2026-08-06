@@ -186,8 +186,44 @@ tasks:
         exclude_input: True
 
 
+  # Presentation deck: cohort results and per-participant examples, generated
+  # from the assessment products so the numbers always match the run that
+  # produced them and regenerate when the options change.
+  - source: slides.py
+    name: "slides"
+    upstream: ["calibration_verify_xy", "calibration_analysis",
+               "resolution_compare", "spectrares_*", "spectracaly_*",
+               "spectraframe_*", "spectracal_*", "overview"]
+    product:
+      nb: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/assessment/slides.{{report_format}}"
+      deck: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/assessment/slides_deck.html"
+      stats: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/assessment/slides_stats.csv"
+    params:
+      context: "Match mode {{match_mode}} Interpolators {{interpolator}} Fit Ne peaks {{fit_ne_peaks}}"
+      meeting: "Raman metrology meeting"
+      title: "VAMAS TWA42 P6 - Raman calibration round robin"
+      artifact_cm1: 20.0
+      min_example_peaks: 5
+      # participation accounting: datasets loaded vs datasets calibrated, so the
+      # deck can state how many laboratories are represented and why others are not
+      dataset_key: "{{dataset_key}}"
+      calibration_key: "{{calibration_key}}"
+      total_labs: 25
+      # needed to load the spectra of the worked examples
+      config_templates: "{{config_templates}}"
+      config_root: "{{config_root}}"
+      neon_tag: "{{ne_tag}}"
+      si_tag: "{{si_tag}}"
+      verify_tags: "CAL,PST"
+      spectrastream_screenshot_derive: "D:\\nina\\src\\charisma\\vamas_twa42_p6_raman_calibration\\examples\\spectrastream1.png"
+      spectrastream_screenshot_verify: "D:\\nina\\src\\charisma\\vamas_twa42_p6_raman_calibration\\examples\\spectrastream2.png"
+    nbconvert_export_kwargs:
+        # optionally hide the code from the report
+        exclude_input: True
+
+
   - source: release.py
-    upstream: ["calibration_verify_*", "spectranexus_*"]
+    upstream: ["calibration_verify_*", "spectranexus_*", "slides"]
     product: 
       nb: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/assessment/release.html"
     params:

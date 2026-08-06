@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import math
 import re
+import time
 
 import numpy as np
 
@@ -174,10 +175,19 @@ def _slide(tag, inner, note=None):
             f"{inner}{note_html}<div class=\"axis-tick\"></div></section>")
 
 
+# Set once per render_deck() call, so every figure in one build shares the
+# same cache-busting query string. Without it, a rebuilt PNG under an
+# unchanged filename (e.g. after a `slides --force` regenerates
+# sample_errors.png) can keep showing a browser- or Nextcloud-cached copy of
+# the old image, since the <img src="..."> URL itself never changes.
+_CACHE_BUST = ""
+
+
 def _figure(src, caption):
     if not src:
         return f'<p class="muted">{_esc(caption)}</p>'
-    return (f'<figure><img src="figures/{_esc(src)}" alt="{_esc(caption)}">'
+    return (f'<figure><img src="figures/{_esc(src)}{_CACHE_BUST}" '
+            f'alt="{_esc(caption)}">'
             f"<figcaption>{caption}</figcaption></figure>")
 
 
@@ -939,6 +949,9 @@ def render_deck(ctx, ne, samples, overall, resolution,
     figures = figures or {}
     ctx = dict(ctx)
     ctx.setdefault("spread_factor", resolution.get("spread_factor", math.nan))
+
+    global _CACHE_BUST
+    _CACHE_BUST = f"?v={int(time.time())}"
     if materials is None:
         materials = sorted(samples["sample"].unique()) if len(samples) else []
 

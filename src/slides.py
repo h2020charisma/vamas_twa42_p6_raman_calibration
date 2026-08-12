@@ -51,6 +51,7 @@ from slides_figures import (
 )
 from utils import get_config_units, load_calibration_model, load_config
 from slides_render import render_deck
+from slides_poster_render import render_poster
 from utils import init_logging, toc_heading
 
 # + tags=["parameters"]
@@ -90,6 +91,13 @@ config_root = None
 neon_tag = "Neon"
 si_tag = "S0B"
 verify_tags = "CAL,PST,S0N,APAP"
+# Poster (ICORS-style, one portrait page): title/authors/affiliations are
+# fixed by what was actually submitted in the abstract, so they are passed
+# explicitly rather than derived from the run. Empty title disables the
+# poster product build.
+poster_title = ""
+poster_authors = ""
+poster_affiliations = ""
 # -
 
 
@@ -575,6 +583,26 @@ html = render_deck(
 
 deck_path.write_text(html, encoding="utf-8")
 logger.info(f"deck written: {deck_path} ({len(html)} bytes)")
+
+if poster_title and "poster" in product:
+    poster_html = render_poster(
+        ctx=ctx,
+        ne=ne,
+        samples=samples,
+        overall=overall,
+        resolution=resolution,
+        artifact_cm1=artifact_cm1,
+        figures=figures,
+        worked_examples=worked_examples,
+        title=poster_title,
+        authors=poster_authors,
+        affiliations=poster_affiliations,
+    )
+    poster_path = Path(str(product["poster"]))
+    poster_path.write_text(poster_html, encoding="utf-8")
+    logger.info(f"poster written: {poster_path} ({len(poster_html)} bytes)")
+elif "poster" in product:
+    logger.warning("poster_title not set; skipping poster build")
 
 stats = stats_table(ne, samples, overall, resolution, examples)
 stats_path = Path(str(product["stats"]))

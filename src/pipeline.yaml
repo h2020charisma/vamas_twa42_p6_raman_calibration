@@ -197,6 +197,7 @@ tasks:
     product:
       nb: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/assessment/slides.{{report_format}}"
       deck: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/assessment/slides_deck.html"
+      poster: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/assessment/poster.html"
       stats: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/assessment/slides_stats.csv"
     params:
       context: "Match mode {{match_mode}} Interpolators {{interpolator}} Fit Ne peaks {{fit_ne_peaks}}"
@@ -215,8 +216,13 @@ tasks:
       neon_tag: "{{ne_tag}}"
       si_tag: "{{si_tag}}"
       verify_tags: "CAL,PST"
-      spectrastream_screenshot_derive: "D:\\nina\\src\\charisma\\vamas_twa42_p6_raman_calibration\\examples\\spectrastream1.png"
-      spectrastream_screenshot_verify: "D:\\nina\\src\\charisma\\vamas_twa42_p6_raman_calibration\\examples\\spectrastream2.png"
+      spectrastream_screenshot_derive: "..\\examples\\spectrastream1.png"
+      spectrastream_screenshot_verify: "..\\examples\\spectrastream2.png"
+      # ICORS 2026 poster: title/authors/affiliations exactly as submitted in
+      # Abstract_ICORS_VAMAS_P6_poster.txt, not derived from the run.
+      poster_title: "Automated Processing Pipeline for Wavenumber and Relative Intensity Calibration of Raman Spectrometers: An Interlaboratory Study"
+      poster_authors: "Nina Jeliazkova<sup>1</sup>, Luchesar Iliev<sup>1</sup>, Nikolay Kochev<sup>1</sup>, Nicolas Coca-Lopez<sup>2</sup>, Miguel A. Ba&ntilde;ares<sup>2</sup>, Ankit Raj<sup>3</sup>, Erlon H. Martins Ferreira<sup>4</sup>, Nobuyasu Itoh<sup>5</sup>, Angela R. Hight Walker<sup>6</sup>, Enrique Lozano Diz<sup>7</sup>, Raquel Portela<sup>2</sup>"
+      poster_affiliations: "1 Ideaconsult Ltd., Sofia, Bulgaria &middot; 2 Instituto de Catalisis y Petroleoquimica (ICP), CSIC, Madrid, Spain &middot; 3 Department of Chemistry, Gakushuin University, Tokyo &middot; 4 Instituto Nacional de Metrologia, Qualidade e Tecnologia (Inmetro), Rio de Janeiro, Brazil &middot; 5 National Institute of Advanced Industrial Science and Technology (AIST), Tsukuba, Ibaraki, Japan &middot; 6 National Institute of Standards and Technology (NIST), Gaithersburg, MD, USA &middot; 7 ELODIZ Ltd, UK"
     nbconvert_export_kwargs:
         # optionally hide the code from the report
         exclude_input: True

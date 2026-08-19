@@ -233,7 +233,8 @@ for key in upstream["spectracal_*"].keys():
                         profile=get_profile(tag), 
                         should_fit=True,
                         match_method = match_mode,
-                        stages=_stages
+                        stages=_stages,
+                        auto_reduce_degree = True
                     )
                 else:
                     df_calib = None

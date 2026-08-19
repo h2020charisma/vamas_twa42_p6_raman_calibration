@@ -61,15 +61,16 @@ def test_slides_task_exists_with_expected_upstream():
     assert set(task["upstream"]) == {
         "calibration_verify_xy", "calibration_analysis",
         "resolution_compare", "spectrares_*", "spectracaly_*",
-        "spectraframe_*", "spectracal_*"}
+        "spectraframe_*", "spectracal_*", "overview"}
 
 
 def test_slides_declares_deck_and_stats_products():
     """The stats CSV is the machine-checkable product: an HTML page can look
     complete after a partial failure, a stats table cannot."""
     task = _find(_load_tasks(), "slides")
-    assert set(task["product"]) == {"nb", "deck", "stats"}
+    assert set(task["product"]) == {"nb", "deck", "poster", "stats"}
     assert str(task["product"]["deck"]).endswith(".html")
+    assert str(task["product"]["poster"]).endswith(".html")
     assert str(task["product"]["stats"]).endswith(".csv")
 
 
@@ -78,7 +79,7 @@ def test_slides_products_are_run_scoped():
     configurations produce separate decks instead of overwriting."""
     task = _find(_load_tasks(), "slides")
     stem = "processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}"
-    for key in ("nb", "deck", "stats"):
+    for key in ("nb", "deck", "poster", "stats"):
         assert stem in str(task["product"][key])
 
 

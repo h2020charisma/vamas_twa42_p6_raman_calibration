@@ -313,8 +313,8 @@ def test_render_deck_produces_all_slides_without_placeholder_nans():
         worked_examples=[("K1, 532 nm, OP1", None, "worked_K1")],
         per_material={},
     )
-    # 14 fixed slides plus one per worked example
-    assert html.count('class="slide"') == 15
+    # 15 fixed slides plus one per worked example
+    assert html.count('class="slide"') == 16
     assert "<!doctype html>" in html
     # A rendered page must never show raw missing-value markers. Match them as
     # standalone cell/word content rather than as substrings, so ordinary words

@@ -21,6 +21,7 @@ from slides_content import (
     fmt,
     fmt_pct,
     pct_change,
+    verification_summary_text,
 )
 
 # Public references, spelled out because the audience is not assumed to know
@@ -547,7 +548,6 @@ def _neon_slide(ne, fig, caption):
         return _slide("8 / 15", "<h2>Neon line positions</h2>"
                                 "<p>No neon data available.</p>")
 
-    factor = before["median"] / after["median"] if after["median"] else math.nan
     rows = []
     for _, r in ne.iterrows():
         label = ("all" if r["laser_wl"] == "all" else f"{r['laser_wl']} nm")
@@ -570,7 +570,7 @@ def _neon_slide(ne, fig, caption):
       <span class="arr">&rarr;</span>
       <span class="good">{fmt(after['median'], 3)}</span> nm</div>
     <div class="stat-label">median absolute residual, all optical configurations
-      &mdash; a factor of {fmt(factor, 1)} reduction</div>
+      &mdash; {fmt_pct(pct_change(before['median'], after['median']))}</div>
     <p style="margin-top:0.9rem">Deviation of each fitted neon peak from its
     assigned NIST line, before and after applying the calibration function. The
     number of residuals exceeding 1&nbsp;nm falls from
@@ -650,24 +650,25 @@ def _samples_slide(samples, overall, artifact_cm1, fig, caption, by_laser=None):
 
     ov = overall.loc[overall["laser_wl"] == "all"].sort_values("stage")
     ov_txt = " &rarr; ".join(fmt(v, 3) for v in ov["median"])
+    verif_txt = verification_summary_text(
+        samples, materials=sorted(samples["sample"].unique()))
 
     return _slide("9 / 15", f"""
 <h2>Result 2: deviation of reference sample peaks after calibration</h2>
 <div class="body" style="grid-template-rows:auto auto auto 1fr">
-  <p style="margin:0;max-width:80ch">Absolute deviation of measured peak positions
+  <p style="margin:0;max-width:80ch">Deviation of measured peak positions
   from  reference sample values, in cm<sup>&minus;1</sup>, at each processing stage.
-  Silicon is not an independent test, since the Raman shift scale is zeroed on
-  that band; calcite and polystyrene are. Median absolute deviation, all
+  Silicon is not an independent test, since the Raman-shift origin is zeroed on
+  that band to correct for the actual laser wavelength; the other materials are
+  independent, verification-only tests. Median absolute deviation, all
   materials pooled, excluding assignment artefacts beyond
   {artifact_cm1:.0f}&nbsp;cm<sup>&minus;1</sup>:
   <b class="mono">{ov_txt}</b>&nbsp;cm<sup>&minus;1</sup>.</p>
   {table}
   {_figure(fig, caption)}
 </div>
-<div class="note">The silicon samples improve substantially, calcite marginally,
-while polystyrene deteriorates slightly: the procedure constrains the scale at the
-positions of its reference lines, and polystyrene serves here for verification
-rather than as an anchor.</div>""")
+<div class="note">Median absolute deviation, original to final stage, per
+material: {_esc(verif_txt) or 'no per-material data for this run'}.</div>""")
 
 
 def _materials_slide(samples, figures, materials):

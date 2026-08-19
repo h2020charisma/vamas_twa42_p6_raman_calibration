@@ -22,6 +22,7 @@ from slides_content import (
     fmt,
     fmt_pct,
     pct_change,
+    verification_summary_text,
 )
 from slides_render import CITATION, LINKS, STYLE, _num, _stage_label
 
@@ -210,15 +211,14 @@ def _result1_section(ne, fig, caption, cache_bust):
     all_rows = ne.loc[ne["laser_wl"] == "all"].set_index("stage")
     before = all_rows.loc["1.original"] if "1.original" in all_rows.index else None
     after = all_rows.loc["2.Ne_clbr"] if "2.Ne_clbr" in all_rows.index else None
-    factor = (before["median"] / after["median"]
-              if before is not None and after is not None and after["median"]
-              else math.nan)
+    change = (pct_change(before["median"], after["median"])
+              if before is not None and after is not None else math.nan)
     stat = (f"<div class=\"stat-row\"><div><div class=\"stat\">"
             f"{fmt(before['median'], 3) if before is not None else '&mdash;'}"
             f" <span class=\"arr\">&rarr;</span> "
             f"<span class=\"good\">{fmt(after['median'], 3) if after is not None else '&mdash;'}</span>"
             f" nm</div><div class=\"stat-label\">median residual, "
-            f"&times;{fmt(factor, 1)} reduction</div></div></div>"
+            f"{fmt_pct(change)}</div></div></div>"
             if before is not None and after is not None else "")
     return f"""
 <div class="poster-section">
@@ -269,18 +269,20 @@ def _samples_table(samples):
 def _result2_section(samples, overall, artifact_cm1, fig, caption, cache_bust):
     ov = overall.loc[overall["laser_wl"] == "all"].sort_values("stage")
     ov_txt = " &rarr; ".join(fmt(v, 3) for v in ov["median"])
+    verif_txt = verification_summary_text(
+        samples, materials=sorted(samples["sample"].unique()))
     return f"""
 <div class="poster-section">
   <h2>Result 2 &mdash; deviation of reference sample peaks after calibration</h2>
-  <p>Absolute deviation of measured peak positions from reference sample values,
-  in cm<sup>&minus;1</sup>, at each processing stage, per material and optical
-  path. Silicon is not an independent test, since the Raman shift scale is
-  zeroed on that band; calcite and polystyrene are. Median absolute deviation,
-  all materials pooled, excluding assignment artefacts beyond
+  <p>Deviation of measured peak positions from reference sample values, in
+  cm<sup>&minus;1</sup>, at each processing stage, per material and optical
+  path. Silicon is not an independent test, since the Raman-shift origin is
+  zeroed on that band to correct for the actual laser wavelength; the other
+  materials are independent, verification-only tests. Median absolute
+  deviation, all materials pooled, excluding assignment artefacts beyond
   {artifact_cm1:.0f}&nbsp;cm<sup>&minus;1</sup>: <b class="mono">{ov_txt}</b>
-  &nbsp;cm<sup>&minus;1</sup>. The silicon samples improve substantially,
-  calcite marginally, while polystyrene &mdash; used here for verification
-  only, not as a calibration anchor &mdash; shows a small net degradation.</p>
+  &nbsp;cm<sup>&minus;1</sup>. Per material, original to final stage:
+  {_esc(verif_txt) or 'no per-material data for this run'}.</p>
   <div class="poster-split-narrow">
     {_samples_table(samples)}
     {_figure(fig, caption, cache_bust)}

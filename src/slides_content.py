@@ -91,9 +91,13 @@ def fmt(value, digits=3, dash="—"):
 
 
 def fmt_pct(value, dash="—"):
+    """Format a `pct_change` value (positive = error got smaller) as words,
+    not a +/- sign: a bare "+93.0%" reads to most people as "went up by
+    93%", the opposite of what a positive `pct_change` means here."""
     if value is None or (isinstance(value, float) and not np.isfinite(value)):
         return dash
-    return f"{value:+.1f}%"
+    direction = "reduction" if value >= 0 else "increase"
+    return f"{abs(value):.1f}% {direction}"
 
 
 # --- neon anchors -----------------------------------------------------------
@@ -180,6 +184,35 @@ def sample_summary(df_samples, artifact_cm1=None):
     out = out.sort_values(["sample", "stage_order"]).drop(columns="stage_order")
     return out[["sample", "stage", "n", "median", "mean", "sd",
                 "p90", "max", "rmse"]]
+
+
+def verification_summary_text(samples, materials=("CAL", "PST")):
+    """One `pct_change` phrase per verification material, e.g.
+    "calcite: 9.3% reduction (n=48)" - built from whichever run's `samples`
+    is passed in, so a slide's prose can never assert a direction the data
+    on screen does not actually show. Materials with no data are skipped
+    rather than shown with a placeholder dash, since the point is a short,
+    always-accurate sentence, not a complete table (the table already
+    exists elsewhere on the slide).
+    """
+    parts = []
+    for material in materials:
+        sub = samples.loc[samples["sample"] == material].set_index("stage")
+        if SAMPLE_STAGES[0] not in sub.index:
+            continue
+        first = sub.loc[SAMPLE_STAGES[0], "median"]
+        last = math.nan
+        n = int(sub.loc[SAMPLE_STAGES[0], "n"])
+        for stage in reversed(SAMPLE_STAGES):
+            if stage in sub.index and np.isfinite(sub.loc[stage, "median"]):
+                last = sub.loc[stage, "median"]
+                break
+        change = pct_change(first, last)
+        if not np.isfinite(change):
+            continue
+        label = MATERIAL_LABELS.get(material, material).split(" (")[0].lower()
+        parts.append(f"{label}: {fmt_pct(change)} (n={n})")
+    return "; ".join(parts)
 
 
 def overall_summary(df_samples, artifact_cm1=None):
@@ -323,13 +356,21 @@ def pick_examples(df_samples, min_peaks=5, do_no_harm_pct=-5.0):
 
 
 def per_configuration_material(df_samples, key, laser_wl, optical_path):
-    """Median |error| per material for one optical configuration.
+    """Median error per material for one optical configuration.
 
-    Pooling the materials hides that they behave differently on the same
-    instrument, which is exactly what the individual cases are meant to show.
+    Signed (`distances` = measured − reference), not |error|: for a single
+    configuration and a handful of peaks per material the sign is
+    informative (is the calibrated peak sitting above or below its reference
+    line?) and collapsing it away is a loss the pooled cohort statistics
+    elsewhere do not need to make, since those pool over many peaks/paths
+    where a signed average would itself be misleading (it can cancel out and
+    hide the spread the deck exists to show — see `sample_summary`).
+    Pooling the materials also hides that they behave differently on the
+    same instrument, which is exactly what the individual cases are meant to
+    show.
     """
     df = df_samples.copy()
-    df["abs_d"] = pd.to_numeric(df["distances"], errors="coerce").abs()
+    df["d"] = pd.to_numeric(df["distances"], errors="coerce")
     sub = df.loc[(df["key"].astype(str) == str(key))
                  & (df["laser_wl"].astype(str) == str(laser_wl))
                  & (df["optical_path"].astype(str) == str(optical_path))]
@@ -339,7 +380,7 @@ def per_configuration_material(df_samples, key, laser_wl, optical_path):
 
     rows = []
     for material, grp in sub.groupby("sample"):
-        stages = grp.groupby("before_after")["abs_d"].median()
+        stages = grp.groupby("before_after")["d"].median()
         before = stages.get(SAMPLE_STAGES[0], math.nan)
         final = math.nan
         for stage in reversed(SAMPLE_STAGES):
@@ -348,7 +389,12 @@ def per_configuration_material(df_samples, key, laser_wl, optical_path):
                 break
         n = int((grp["before_after"] == SAMPLE_STAGES[0]).sum())
         rows.append(dict(sample=material, n=n, before=before, final=final,
-                         improvement_pct=pct_change(before, final)))
+                         improvement_pct=pct_change(abs(before)
+                                                    if np.isfinite(before)
+                                                    else before,
+                                                    abs(final)
+                                                    if np.isfinite(final)
+                                                    else final)))
     order = {m: i for i, m in enumerate(["CAL", "PST", "S0B", "S0N", "APAP"])}
     out = pd.DataFrame(rows)
     out["_order"] = out["sample"].map(lambda s: order.get(s, 99))
@@ -357,8 +403,14 @@ def per_configuration_material(df_samples, key, laser_wl, optical_path):
 
 def per_configuration_material_all_stages(df_samples, key, laser_wl,
                                           optical_path):
-    """Mean and median |error| per material, at each of the three stages
-    separately, for one optical configuration.
+    """Signed mean and median error per material, at each of the three
+    stages separately, for one optical configuration.
+
+    Signed (`distances` = measured − reference), for the same reason as
+    `per_configuration_material`: at the single-configuration level, both the
+    direction and the magnitude of the deviation are informative, and
+    reducing to |error| here would discard information the pooled cohort
+    statistics do not have the granularity to need.
 
     `per_configuration_material` collapses x-calibrated and y-calibrated into
     one "final" column, which hides exactly the kind of stage-to-stage jump
@@ -368,7 +420,7 @@ def per_configuration_material_all_stages(df_samples, key, laser_wl,
     three stages so that is visible rather than hidden.
     """
     df = df_samples.copy()
-    df["abs_d"] = pd.to_numeric(df["distances"], errors="coerce").abs()
+    df["d"] = pd.to_numeric(df["distances"], errors="coerce")
     sub = df.loc[(df["key"].astype(str) == str(key))
                  & (df["laser_wl"].astype(str) == str(laser_wl))
                  & (df["optical_path"].astype(str) == str(optical_path))]
@@ -378,8 +430,8 @@ def per_configuration_material_all_stages(df_samples, key, laser_wl,
     rows = []
     for (material, stage), grp in sub.groupby(["sample", "before_after"]):
         rows.append(dict(sample=material, stage=stage, n=int(len(grp)),
-                         mean=float(grp["abs_d"].mean()),
-                         median=float(grp["abs_d"].median())))
+                         mean=float(grp["d"].mean()),
+                         median=float(grp["d"].median())))
     order = {m: i for i, m in enumerate(["CAL", "PST", "S0B", "S0N", "APAP"])}
     out = pd.DataFrame(rows)
     out["_m_order"] = out["sample"].map(lambda s: order.get(s, 99))

@@ -152,24 +152,24 @@ def error_bars_figure(df_samples, out_dir, filename="sample_errors.png",
                       stages=("1.original", "2.x-clbr", "3.y-clbr")):
     """Deviation from reference sample peak positions, as boxplots.
 
-    One panel per material, one box per stage, built from one mean |error|
-    per optical path (an optical path contributes several matched peaks, so
-    it is collapsed to its mean first — the box then shows how paths differ
-    from each other, not how peaks differ within a path). Points are the
-    individual optical paths, jittered, matching the neon boxplot's style so
-    the two "before/after" results in the deck read as the same kind of
-    picture.
+    One panel per material, one box per stage, one point per matched peak
+    (not averaged per optical path first) — same structure as the neon
+    boxplot. Signed (`distances` = measured - reference), not |error|:
+    averaging within a path first would risk a positive and a negative
+    mismatch on the same path cancelling before ever reaching the plot,
+    which is exactly the kind of masking a single-peak mismatch (e.g. a
+    matcher picking the wrong reference line) must not be allowed to cause.
+    Plotting every peak individually and letting the boxplot's own
+    median/IQR summarise the spread avoids that risk entirely.
     """
     if df_samples is None or df_samples.empty:
         return None, "no sample statistics available"
 
     df = df_samples.copy()
-    df["abs_d"] = pd.to_numeric(df["distances"], errors="coerce").abs()
-    per_path = (df.groupby(["sample", "before_after", "key", "laser_wl",
-                             "optical_path"])["abs_d"]
-                  .mean().reset_index())
+    df["d"] = pd.to_numeric(df["distances"], errors="coerce")
+    df = df.loc[df["d"].notna()]
 
-    materials = sorted(per_path["sample"].unique())
+    materials = sorted(df["sample"].unique())
     if not materials:
         return None, "no materials in sample statistics"
 
@@ -179,8 +179,8 @@ def error_bars_figure(df_samples, out_dir, filename="sample_errors.png",
     rng = np.random.default_rng(0)
     for col, material in enumerate(materials):
         ax = axes[0][col]
-        sub = per_path.loc[per_path["sample"] == material]
-        data = [sub.loc[sub["before_after"] == s, "abs_d"].to_numpy(dtype=float)
+        sub = df.loc[df["sample"] == material]
+        data = [sub.loc[sub["before_after"] == s, "d"].to_numpy(dtype=float)
                 for s in stages]
         data = [d[np.isfinite(d)] for d in data]
         bp = ax.boxplot(data, showfliers=False, widths=0.5, patch_artist=True)
@@ -196,18 +196,41 @@ def error_bars_figure(df_samples, out_dir, filename="sample_errors.png",
         for line in bp["medians"]:
             line.set_color("#2a2a2a")
             line.set_linewidth(1.4)
+        ax.axhline(0.0, color="#8a8a8a", linewidth=0.8, linestyle="--", zorder=0)
         ax.set_xticks(range(1, len(stages) + 1))
         ax.set_xticklabels([s.split(".", 1)[-1] for s in stages],
                            rotation=30, ha="right", fontsize=7)
-        _style(ax, "", "|error| / cm$^{-1}$", material)
+        _style(ax, "", "error / cm$^{-1}$", material)
+
+        # A handful of matcher-mismatched peaks (wrong reference line, tens
+        # of cm-1 off) can sit far outside the box; `showfliers=False` only
+        # suppresses the boxplot's own outlier markers, not the raw scatter
+        # overlay or matplotlib's autoscale, so without clipping those points
+        # stretch the axis until the box and median are an unreadable sliver
+        # near zero. Clip to a multiple of the IQR around the median instead
+        # of the data range: wide enough that real spread stays visible,
+        # tight enough to still exclude the tens-of-cm-1 mismatches (e.g.
+        # CAL's mean/SD run an order of magnitude above its median because
+        # of a handful of such points).
+        all_vals = np.concatenate(data) if data else np.array([])
+        if all_vals.size:
+            q1, med, q3 = np.percentile(all_vals, [25, 50, 75])
+            iqr = max(q3 - q1, 1e-6)
+            # lo, hi = float(np.min(all_vals)), float(np.max(all_vals))
+            # do not remove the comment
+            data_lo, data_hi = float(np.min(all_vals)), float(np.max(all_vals))
+            lo = max(med - 24 * iqr, data_lo)
+            hi = min(med + 24 * iqr, data_hi)
+            ax.set_ylim(min(lo, -0.1), max(hi, 0.1))
 
     fig.tight_layout()
     path = Path(out_dir) / filename
     fig.savefig(path, **FIG_KW)
     plt.close(fig)
-    return path.name, ("Each point is one optical path's mean |error| "
-                       "against reference sample peak positions; box shows "
-                       "median and IQR across optical paths")
+    return path.name, ("Each point is one matched peak's signed deviation "
+                       "(measured minus reference) against reference sample "
+                       "peak positions; box shows median and IQR across all "
+                       "matched peaks")
 
 
 def neon_figure(df_ne, out_dir, filename="neon_residuals.png"):
@@ -219,6 +242,13 @@ def neon_figure(df_ne, out_dir, filename="neon_residuals.png"):
     hidden in a whisker. A mean+-SD bar chart understates the before/after
     story here because the "before" distribution is exactly the
     heavy-tailed one the calibration is meant to fix.
+
+    Signed (`distances` = measured - reference NIST line), not |residual|:
+    unlike a single pooled scalar (which a signed mean/median could collapse
+    to a misleading ~0 if positive and negative residuals cancel), a boxplot
+    shows the whole distribution, so signing it costs nothing and reveals a
+    systematic over/under-shoot in the wavelength calibration that |residual|
+    cannot show.
     """
     if df_ne is None or df_ne.empty:
         return None, "no neon data available"
@@ -226,8 +256,8 @@ def neon_figure(df_ne, out_dir, filename="neon_residuals.png"):
     df = df_ne.copy()
     if "sample" in df.columns:
         df = df.loc[df["sample"].astype(str).str.strip() == "Ne"]
-    df["abs_d"] = pd.to_numeric(df["distances"], errors="coerce").abs()
-    df = df.loc[df["abs_d"].notna()]
+    df["d"] = pd.to_numeric(df["distances"], errors="coerce")
+    df = df.loc[df["d"].notna()]
     stages = ["1.original", "2.Ne_clbr"]
     df = df.loc[df["before_after"].isin(stages)]
 
@@ -241,7 +271,7 @@ def neon_figure(df_ne, out_dir, filename="neon_residuals.png"):
     for col, laser in enumerate(lasers):
         ax = axes[0][col]
         sub = df.loc[df["laser_wl"] == laser]
-        data = [sub.loc[sub["before_after"] == s, "abs_d"].to_numpy(dtype=float)
+        data = [sub.loc[sub["before_after"] == s, "d"].to_numpy(dtype=float)
                 for s in stages]
         data = [d[np.isfinite(d)] for d in data]
         bp = ax.boxplot(data, showfliers=False, widths=0.5, patch_artist=True)
@@ -258,18 +288,20 @@ def neon_figure(df_ne, out_dir, filename="neon_residuals.png"):
             for line in bp[line_key]:
                 line.set_color("#2a2a2a")
                 line.set_linewidth(1.4)
+        ax.axhline(0.0, color="#8a8a8a", linewidth=0.8, linestyle="--", zorder=0)
         ax.set_xticks([1, 2])
         ax.set_xticklabels([s.split(".", 1)[-1] for s in stages])
         title = f"{laser:g} nm" if isinstance(laser, (int, float)) else str(laser)
-        _style(ax, "", "|residual| / nm" if col == 0 else "", title)
+        _style(ax, "", "residual / nm" if col == 0 else "", title)
 
     fig.tight_layout()
     path = Path(out_dir) / filename
     fig.savefig(path, **FIG_KW)
     plt.close(fig)
     return path.name, ("Neon peak positions against matched NIST lines, "
-                       "before and after calibration; each point is one "
-                       "matched line, box shows median and IQR")
+                       "signed residual (measured minus reference), before "
+                       "and after calibration; each point is one matched "
+                       "line, box shows median and IQR")
 
 
 def resolution_spread_figure(df_res, out_dir, filename="resolution_spread.png"):
@@ -453,6 +485,14 @@ def worked_example_figure(spe_neon, spe_neon_cal, calmodel, spe_sil,
     calibration), so the numbers that go with the plot are shown next to it
     rather than left implicit.
 
+    Panel 1 (neon) is labelled "intensity" rather than a specific unit: an
+    HDR-merged spectrum is in counts/ms (ramanchada2's
+    `hdr_from_multi_exposure` divides each source exposure's y by its own
+    integration time before merging), not raw counts, and which one a given
+    configuration has varies - "intensity" avoids asserting a unit that does
+    not hold for every worked example. Panel 3 (silicon) is not usually
+    HDR-merged in practice and keeps the more specific "counts" label.
+
     Every argument may be None; the corresponding panel is then annotated as
     unavailable instead of the figure failing, because the deck must still build
     when one spectrum is missing for a laboratory.
@@ -512,7 +552,7 @@ def worked_example_figure(spe_neon, spe_neon_cal, calmodel, spe_sil,
             ax_si.axvline(520.45, color=PALETTE[5], linestyle="--",
                           linewidth=1.0, label="520.45 cm$^{-1}$")
             ax_si.set_xlim(480, 560)
-        _style(ax_si, "Raman shift / cm$^{-1}$", "intensity",
+        _style(ax_si, "Raman shift / cm$^{-1}$", "counts",
                "3. Silicon band and wavenumber origin")
         ax_si.legend(fontsize=7.5, frameon=False)
     else:
@@ -584,10 +624,14 @@ def worked_example_figure(spe_neon, spe_neon_cal, calmodel, spe_sil,
         ax_spe.text(0.5, 0.5, "not available", ha="center", va="center",
                     transform=ax_spe.transAxes, color="#8a8a8a", fontsize=9)
 
-    # error_table: mean |error| per material at each stage, matching the
-    # matched-peak statistics elsewhere in the deck exactly, so a viewer of
-    # this plot is not left guessing whether the spectrum shown corresponds to
-    # a good or a poor number.
+    # error_table: signed mean error per material at each stage (measured -
+    # reference; `per_configuration_material_all_stages` no longer takes
+    # |error| here), so a viewer of this plot sees whether the calibrated
+    # peak sits above or below its reference line, not just how far off it
+    # is. The pooled cohort statistics elsewhere in the deck stay on
+    # |error|, since a signed average over many peaks/paths can cancel out
+    # and hide the spread those statistics exist to show; at the single
+    # configuration shown here that concern does not apply.
     if error_table is not None and len(error_table):
         stage_labels = {"1.original": "orig", "2.x-clbr": "x-cal",
                         "3.y-clbr": "y-cal"}
@@ -599,7 +643,7 @@ def worked_example_figure(spe_neon, spe_neon_cal, calmodel, spe_sil,
                 .set_index("stage")
             cells = []
             for stage in ["1.original", "2.x-clbr", "3.y-clbr"]:
-                cells.append(f"{sub.loc[stage, 'mean']:6.1f}"
+                cells.append(f"{sub.loc[stage, 'mean']:+6.1f}"
                              if stage in sub.index else f"{'--':>6}")
             lines.append(f"{material:<10} " + "  ".join(cells))
         ax_spe.text(0.02, 0.98, "\n".join(lines), transform=ax_spe.transAxes,

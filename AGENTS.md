@@ -37,7 +37,8 @@ cd src && uv run ploomber task spectraframe_P6_0101     # run one task
 ## Repository layout
 
 - `src/pipeline.yaml` — the Ploomber DAG (source of truth for task wiring, products, params).
-  `src/pipeline.demo.yaml` is the reduced demo variant.
+  `src/pipeline.demo.yaml` is the reduced demo variant; `src/pipeline.twinning.yaml` is the
+  CWA 18134 twinning variant (load + x-cal only, then the `twinning` task).
 - `src/env.yaml` / `src/env_example.yaml` — pipeline config: participant keys, tags, paths, options.
   `env.yaml` is machine-specific; **do not commit real local paths** — `env_example.yaml` shows the
   template with `CHANGEIT` placeholders.
@@ -49,7 +50,11 @@ cd src && uv run ploomber task spectraframe_P6_0101     # run one task
   - `spectraframe_resolution.py` → spectral distribution / pixel / spectral resolution curves
   - `calibration_verify.py` → cross-provider comparison, QA reports (grid: `x`, `xy`)
   - `calibration_analysis.py`, `matched_peaks_analysis.py` → post-hoc analysis
-  - `spectraframe_tips.py`, `qmatch.py`, `release.py` → twinning, matching QC, release copy
+  - `spectraframe_tips.py` → TiPS quick-look listing of loaded TiPS rows
+  - `twinning.py`, `twinning_utils.py` → CWA 18134 twinning (CF + Q_HI per
+    reference/twinned pair, via a `QhiTwinningComponent` subclass of
+    `ramanchada2.protocols.twinning.TwinningComponent`)
+  - `qmatch.py`, `release.py` → matching QC, release copy
 - `src/utils.py` — shared helpers (template/config loading, plotting, TOC/HTML report helpers).
 - `src/matchpeaks.py`, `src/qmatch.py`, `src/deepcal.py` — peak-matching / interpolation algorithms.
 - `src/config_pipeline_example.json` — the `config_templates` JSON (per-participant template paths,

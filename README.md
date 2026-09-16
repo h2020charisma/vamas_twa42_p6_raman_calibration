@@ -145,6 +145,26 @@ interpolator: "poly"
 
 ⚠️ Use paths relevant to your local or server environment. Do not use example paths as-is.
 
+### Twinning (CWA 18134)
+
+[CWA 18134:2024](docs/cwa18134_summary.md) "twins" two already x-calibrated instruments in absolute Raman intensity: from the TiPS (epoxy + anatase TiO₂) test sample measured at ≥5 laser powers in each instrument, the TiO₂ 144 cm⁻¹ reference band is fitted and regressed vs laser power; the **Correction Factor CF = S_ref / S_twin** (Formula 3) harmonizes the twinned instrument's spectra, and the quality factor **Q_HI** (Formula 4, per power pair, averaged; ideal 1, >0.9 very good) verifies the harmonization. Twinning runs as a separate pipeline reusing the standard load + x-calibration tasks; the x-cal models are produced by the pipeline's `spectracal` tasks and consumed from disk by the `twinning` task (tasks whose products are unchanged are skipped). Set up `env.yaml` from `src/env.twinning.example.yaml`, keeping `config_root`/`config_output` and `fit_ne_peaks`/`match_mode`/`interpolator` identical to your main-pipeline run:
+
+```yaml
+twinning_reference_key: "P6_01201"   # single configured reference participant
+twinning_keys:                       # participants to twin (MUST include the reference)
+  - "P6_01201"
+  - "P6_0601"
+tips_sample_tag: "TiPS_Ti"           # or "TiPS_PS"; one tag per run
+twinning_rrb: 144                    # TiO2 RRB, cm-1
+twinning_min_powers: 5               # CWA §6.2 minimum distinct laser powers
+```
+
+```sh
+uv run ploomber build -e pipeline.twinning.yaml
+```
+
+Outputs land under `config_output/twinning/`: `twinning_results.csv`/`.xlsx` (slopes, CF, Q_HI mean/min, PASS/FAIL/not_twinable + reasons), `plots/` (regression + CF-corrected overlays), `twinning_harmonized.h5`.
+
 ### Step 2: Run pipeline
 
 ```sh

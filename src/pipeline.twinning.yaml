@@ -1,0 +1,74 @@
+# CWA 18134 twinning protocol pipeline (see docs/cwa18134_summary.md).
+# Reuses the load + x-calibration tasks from pipeline.yaml with identical
+# product paths, so already-built products (incl. calmodels) are skipped when
+# up to date. Twinning prerequisite is x-calibration ONLY — no y-calibration:
+# the Correction Factor absorbs absolute-intensity differences.
+# Run (from src/): uv run ploomber build -e pipeline.twinning.yaml
+meta:
+    extract_upstream: False
+
+tasks:
+
+  - source: spectraframe_load.py
+    name: "spectraframe_[[key]]"
+    upstream: []
+    product:
+      nb: "{{config_output}}/[[key]]/spectraframe_load.{{report_format}}"
+      h5: "{{config_output}}/[[key]]/spectraframe_load.h5"
+      xlsx: "{{config_output}}/[[key]]/spectraframe_load.xlsx"
+    params:
+      config_templates: "{{config_templates}}"
+      config_root: "{{config_root}}"
+    grid:
+      key: "{{twinning_keys}}"
+
+
+  - source: spectraframe_calibrate.py
+    name: "spectracal_[[key]]"
+    product:
+      nb: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/spectracal.{{report_format}}"
+      calmodels: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/calmodels"
+      matched_peaks: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/matched_peaks.csv"
+    upstream: "spectraframe_*"
+    params:
+      config_templates: "{{config_templates}}"
+      config_root: "{{config_root}}"
+      neon_tag: "{{ne_tag}}"
+      si_tag: "{{si_tag}}"
+      pst_tag: "{{pst_tag}}"
+      apap_tag: "{{apap_tag}}"
+      calcite_tag: "{{calcite_tag}}"
+      fit_neon_peaks: "{{fit_ne_peaks}}"
+      match_mode: "{{match_mode}}"
+      interpolator: "{{interpolator}}"
+      test_offset: 0
+    grid:
+      key: "{{twinning_keys}}"
+
+
+  # CWA 18134: per (twinned key, laser_wl, optical path) vs the configured
+  # reference participant: fit the TiO2 RRB vs laser power, CF = slope_R/slope_T
+  # (Formula 3), Q_HI per power pair + mean (Formula 4), plots, harmonized h5.
+  - source: twinning.py
+    name: "twinning"
+    upstream: ["spectraframe_*", "spectracal_*"]
+    product:
+      nb: "{{config_output}}/twinning/twinning.{{report_format}}"
+      results: "{{config_output}}/twinning/twinning_results.csv"
+      results_xlsx: "{{config_output}}/twinning/twinning_results.xlsx"
+      plots: "{{config_output}}/twinning/plots"
+      h5: "{{config_output}}/twinning/twinning_harmonized.h5"
+    params:
+      config_templates: "{{config_templates}}"
+      config_root: "{{config_root}}"
+      reference_key: "{{twinning_reference_key}}"
+      twinned_keys: "{{twinning_keys}}"
+      tips_sample_tag: "{{tips_sample_tag}}"
+      reference_band_cm1: "{{twinning_rrb}}"
+      boundaries: "{{twinning_boundaries}}"
+      min_powers: "{{twinning_min_powers}}"
+      power_tolerance: "{{twinning_power_tolerance}}"
+      validation_powers: "{{twinning_validation_powers}}"
+    nbconvert_export_kwargs:
+      # optionally hide the code from the report
+      exclude_input: True

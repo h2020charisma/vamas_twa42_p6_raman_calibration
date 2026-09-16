@@ -31,4 +31,29 @@ calibration_key:
   - "P6_01202"
 
 report_format: "html"
-release_folder: "release"  
+release_folder: "release"
+
+# --- CWA 18134 twinning (docs/cwa18134_summary.md, src/pipeline.twinning.yaml) ---
+# single configured reference participant (RI_R)
+twinning_reference_key: "P6_01201"
+# participants to twin against the reference — MUST include the reference key
+# (the load/x-cal grid fans out over this list; twinning.py excludes the
+# reference itself from the twinned side)
+twinning_keys:
+  - "P6_01201"
+  - "P6_0601"
+  - "P6_01202"
+# TiPS (epoxy + 0.5 wt% anatase TiO2) sample tag; one tag per run
+# ("TiPS_Ti" or "TiPS_PS")
+tips_sample_tag: "TiPS_Ti"
+# reference Raman band (RRB), cm-1: TiO2 144 (638 fallback for low-end cutoff)
+twinning_rrb: 144
+# spectral boundaries for trim/area, cm-1
+twinning_boundaries: [50, 2000]
+# CWA 18134 §6.2 minimum distinct laser powers per instrument
+twinning_min_powers: 5
+# pairing tolerance on laser_power_percent (reserved; 0 = exact matching)
+twinning_power_tolerance: 0.0
+# CWA §6.5 recommended validation: 2 extra laser powers (%) excluded from the
+# fit; empty list disables it
+twinning_validation_powers: []  

@@ -4,9 +4,15 @@
 (repo root). CEN Workshop Agreement, September 2024, CHARISMA H2020
 (GA 952921). Ideaconsult / Nina Jeliazkova is a listed contributor.*
 
-> **Implementation status:** implemented in **ramanchada2**, **not yet in the
-> VAMAS P6 pipeline** — this summary is groundwork for a future pipeline
-> implementation.
+> **Implementation status:** implemented in **ramanchada2**
+> (`ramanchada2.protocols.twinning.TwinningComponent`) **and in the VAMAS P6
+> pipeline** as `src/pipeline.twinning.yaml` + `src/twinning.py` /
+> `src/twinning_utils.py`. The pipeline applies the **x-calibration
+> prerequisite only** — deliberately: the Correction Factor absorbs absolute
+> intensity differences, and the spec's own §6.3 pre-processing chain contains
+> no y-calibration step. Full CWA 18133 x/y calibration remains the
+> instrument-qualification prerequisite, verified outside this data-processing
+> task.
 
 ## What it is (and how it differs from CWA 18133)
 
@@ -41,9 +47,10 @@ chemical stability, low-roughness polished surface (Sa ≈ 0.75 µm).
   filed 2023-05-19) — relevant if the sample or its use is redistributed.
 
 > In the P6 data, TiPS samples (`TiPS_Ti`, `TiPS_PS`) belong here, **not** to
-> the 18133 x-calibration panel — the P6 loader currently drops them
-> (`ignore_samples`). They are the 18134 test material, out of scope for the
-> x-calibration work but the natural input when 18134 is implemented.
+> the 18133 x-calibration panel. They are **loaded normally** by the P6 loader
+> into the `templates_read` HDF5 key (there is no `ignore_samples` filter —
+> the earlier claim in this doc was wrong); `spectraframe_tips.py` displays
+> them and `src/twinning.py` consumes them as the 18134 test material.
 
 ## Procedure (§6)
 
@@ -82,13 +89,33 @@ CF (correction factor) · RRB (reference Raman band, TiO₂ 144 cm⁻¹) ·
 RI_R / RI_T (reference / to-be-twinned instrument) · S_RIR / S_RIT (regression
 slopes) · Q_HI (quality of harmonization) · LP (laser power) · a.u.c.
 
-## For a future P6 pipeline implementation
+## P6 pipeline implementation
 
-- Inputs already exist in P6: TiPS test-sample spectra at multiple laser
-  powers (see `track1_power/` power-linearity work) — 18134 is essentially the
-  formalization of that intensity-vs-power regression into a transferable CF.
-- ramanchada2 has the reference implementation; a pipeline task would: load
-  TiPS spectra per (instrument, power), normalize (power + integration time),
-  baseline-remove, fit the 144 cm⁻¹ RRB, regress vs power, compute CF against a
-  chosen reference instrument, then emit CF + Q_HI per twinned pair.
-- Depends on 18133 x/y calibration being applied first (prerequisite chain).
+Implemented as `src/pipeline.twinning.yaml` (run from `src/`:
+`uv run ploomber build -e pipeline.twinning.yaml`; env keys in
+`src/env.twinning.example.yaml`):
+
+- The pipeline reuses the standard `spectraframe_load.py` + 
+  `spectraframe_calibrate.py` tasks over the `twinning_keys` list, then a
+  single `twinning` task (`src/twinning.py`, helpers in
+  `src/twinning_utils.py`) wraps ramanchada2's `TwinningComponent` via a
+  `QhiTwinningComponent` subclass.
+- Per configured reference participant (`twinning_reference_key`) ×
+  twinned participant, per laser wavelength / optical path, it: selects the
+  background-subtracted TiPS rows (sample tag `tips_sample_tag`), applies the
+  x-cal model (`calmodel.apply_calibration_x`), averages replicates, aligns
+  the two frames on paired laser powers, then normalizes (power + integration
+  time), removes the baseline (snip), fits the TiO₂ RRB
+  (`twinning_rrb`, default 144 cm⁻¹), regresses vs power and computes
+  **CF** (Formula 3) and **Q_HI** per power pair + mean (Formula 4).
+- Outputs under `{{config_output}}/twinning/`: `twinning_results.csv`/`.xlsx`
+  (slopes, CF, Q_HI mean/min, PASS/FAIL/not_twinable verdicts + reasons),
+  regression & harmonization plots (`plots/`, incl. the §6.5(a) CF-corrected
+  overlay), and `twinning_harmonized.h5` (CF-multiplied TiPS spectra).
+- Only ≥5 distinct power levels with calibrated-power-meter measured
+  `laser_power_mW` (§5/§6.2) can be twinned; everything else is reported as
+  `not_twinable`/`skipped` with a reason instead of failing the DAG.
+  Optional §6.5 validation at `twinning_validation_powers` (2 extra powers).
+- Depends on 18133 **x-calibration** being applied first (prerequisite
+  chain); y-calibration is deliberately not applied — CF absorbs the
+  intensity scale.

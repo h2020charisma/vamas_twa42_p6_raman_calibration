@@ -3182,22 +3182,15 @@ wheels = [
 [[package]]
 name = "pyambit"
 version = "0.0.2"
-source = { editable = "../pyambit-main" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "nexusformat" },
     { name = "pandas" },
     { name = "pydantic" },
-    { name = "pytest" },
-    { name = "seaborn" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "nexusformat", specifier = ">=1.0.6,<3.0.0" },
-    { name = "pandas", specifier = ">=2.2.2,<3.0.0" },
-    { name = "pydantic", specifier = ">=2.0,<3.0" },
-    { name = "pytest", specifier = ">=8.3.4,<9.0.0" },
-    { name = "seaborn", specifier = ">=0.13.2,<0.14.0" },
+sdist = { url = "https://files.pythonhosted.org/packages/06/8f/43347f8a6a59b3c7d7c72832d8a8a1a7006197b3e11125defea9bc6b3428/pyambit-0.0.2.tar.gz", hash = "sha256:bdb92e0bdab29b28ad25e529f4184258ca51ecae41f450b54804978678d116ca", size = 23206, upload-time = "2025-05-22T13:35:04.765Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d0/1b/9736e6c1b2c29c17e7b5ba5e209072a7788b0764429c0ca500c05c531480/pyambit-0.0.2-py3-none-any.whl", hash = "sha256:4ba926f099809f3da8ecc966642aa6a83d592ea24c1cf9d24a00c95b1cba4c45", size = 25940, upload-time = "2025-05-22T13:35:03.117Z" },
 ]
 
 [[package]]
@@ -3942,20 +3935,6 @@ wheels = [
 ]
 
 [[package]]
-name = "seaborn"
-version = "0.13.2"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "matplotlib" },
-    { name = "numpy" },
-    { name = "pandas" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/86/59/a451d7420a77ab0b98f7affa3a1d78a313d2f7281a57afb1a34bae8ab412/seaborn-0.13.2.tar.gz", hash = "sha256:93e60a40988f4d65e9f4885df477e2fdaff6b73a9ded434c1ab356dd57eefff7", size = 1457696, upload-time = "2024-01-25T13:21:52.551Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/83/11/00d3c3dfc25ad54e731d91449895a79e4bf2384dc3ac01809010ba88f6d5/seaborn-0.13.2-py3-none-any.whl", hash = "sha256:636f8336facf092165e27924f223d3c62ca560b1f2bb5dff7ab7fad265361987", size = 294914, upload-time = "2024-01-25T13:21:49.598Z" },
-]
-
-[[package]]
 name = "send2trash"
 version = "1.8.3"
 source = { registry = "https://pypi.org/simple" }
@@ -4404,12 +4383,10 @@ dependencies = [
     { name = "h5py" },
     { name = "h5pyd" },
     { name = "jupyter" },
-    { name = "nexusformat" },
     { name = "numcompress" },
     { name = "numpy" },
     { name = "openpyxl" },
     { name = "ploomber" },
-    { name = "pyambit" },
     { name = "pynanomapper" },
     { name = "ramanchada2" },
     { name = "requests" },
@@ -4429,12 +4406,10 @@ requires-dist = [
     { name = "h5py", specifier = "~=3.10.0" },
     { name = "h5pyd", specifier = "~=0.18.0" },
     { name = "jupyter", specifier = "~=1.0.0" },
-    { name = "nexusformat", specifier = "~=1.0.4" },
     { name = "numcompress", specifier = "~=0.1.2" },
     { name = "numpy", specifier = "~=1.26.4" },
     { name = "openpyxl", specifier = "~=3.1.5" },
     { name = "ploomber", specifier = "~=0.23.2" },
-    { name = "pyambit", editable = "../pyambit-main" },
     { name = "pynanomapper", specifier = "~=2.1.0" },
     { name = "ramanchada2", editable = "../ramanchada2" },
     { name = "requests", specifier = "~=2.31.0" },

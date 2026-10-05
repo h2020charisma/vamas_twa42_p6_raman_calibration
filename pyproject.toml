@@ -17,12 +17,10 @@ dependencies = [
     "h5pyd~=0.18.0",
     "h5py~=3.10.0",
     "jupyter~=1.0.0",
-    "nexusformat~=1.0.4",
     "numcompress~=0.1.2",
     "numpy~=1.26.4",
     "openpyxl~=3.1.5",
     "ploomber~=0.23.2",
-    "pyambit>=0.0.2",
     "pynanomapper~=2.1.0",
     "ramanchada2~=1.4.0",
     "requests~=2.31.0",
@@ -37,7 +35,6 @@ repository = "https://github.com/h2020charisma/vamas_twa42_p6_raman_calibration"
 
 [tool.uv.sources]
 ramanchada2 = { path = "../ramanchada2", editable = true }
-pyambit = { path = "../pyambit-main", editable = true }
 
 [dependency-groups]
 dev = ["pytest~=8.4"]

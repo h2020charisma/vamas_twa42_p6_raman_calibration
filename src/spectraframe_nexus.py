@@ -98,8 +98,6 @@ def export_one_calibration(df, config, calmodels_dir, ycalmodels_dir, nexus_dir,
         spe_silicon=spe_sil, spe_silicon_units=si_units,
         title=f"{key} {laser_wl}nm {optical_path} x/y calibration",
         wavelength=laser_wl,
-        provider=key,
-        investigation="VAMAS TWA42 P6 round robin",
     )
 
     n_entries = 1 + (1 if ycal_component is not None else 0)

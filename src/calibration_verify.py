@@ -275,8 +275,12 @@ for key in upstream["spectracal_*"].keys():
 if matched_peaks is not None and "distances" not in matched_peaks.columns and "distance" in matched_peaks.columns:
     matched_peaks = matched_peaks.rename(columns={"distance": "distances"})
 _has_distances = matched_peaks is not None and "distances" in matched_peaks.columns
-# always write the product so the pipeline task does not fail on a missing file
-(matched_peaks if matched_peaks is not None else pd.DataFrame()).to_csv(product["matched_peaks"], index=False)
+# always write the product so the pipeline task does not fail on a missing file; with no
+# matches write just the header, so pd.read_csv downstream gets an empty frame, not an error
+_MATCHED_PEAKS_COLUMNS = ["spe", "reference", "distances", "inlier_mask", "match_mode",
+                          "before_after", "key", "sample", "optical_path", "laser_wl"]
+(matched_peaks if matched_peaks is not None else pd.DataFrame(columns=_MATCHED_PEAKS_COLUMNS)
+ ).to_csv(product["matched_peaks"], index=False)
 
 if not _has_distances:
     logger.warning("matched_peaks is missing or has no 'distances' column; "

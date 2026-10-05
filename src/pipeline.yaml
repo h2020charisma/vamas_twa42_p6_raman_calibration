@@ -141,10 +141,6 @@ tasks:
       config_root: "{{config_root}}"
       neon_tag: "{{ne_tag}}"
       si_tag: "{{si_tag}}"
-      pst_tag: "{{pst_tag}}"
-      apap_tag: "{{apap_tag}}"
-      calcite_tag: "{{calcite_tag}}"
-      test_tags: "S0N"
       match_mode: "{{match_mode}}"
       interpolator: "{{interpolator}}"
     nbconvert_export_kwargs:

@@ -72,4 +72,22 @@ tasks:
         exclude_input: True            
     grid:
       mode: ["x", "xy"]
+
+
+  - source: spectraframe_nexus.py
+    name: "spectranexus_[[key]]"
+    upstream: ["spectraframe_*", "spectracal_*", "spectracaly_*"]
+    product:
+      nb: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/spectranexus.{{report_format}}"
+      nexus: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/nexus"
+      manifest: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/nexus_manifest.csv"
+    params:
+      config_templates: "{{config_templates}}"
+      config_root: "{{config_root}}"
+      neon_tag: "{{ne_tag}}"
+      si_tag: "{{si_tag}}"
+      match_mode: "{{match_mode}}"
+      interpolator: "{{interpolator}}"
+    grid:
+      key: "{{dataset_key}}"
  

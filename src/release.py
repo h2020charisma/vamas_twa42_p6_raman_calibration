@@ -37,7 +37,20 @@ def make_release(
     if exclude_folders is None:
         exclude_folders = []
 
-    allowed_ext = {'.html', '.ipynb', '.pkl', '.xls', '.xlsx', '.xlsm'}
+    allowed_ext = {'.html', '.ipynb', '.pkl', '.xls', '.xlsx', '.xlsm', '.nxs'}
+    # CWA 18133 §8 portable calibration files (calmodel_*_cwa.csv/.json,
+    # ycalmodel_*_cwa.csv/.json) and the NeXus export manifest are the
+    # language-independent deliverables computed by the pipeline; everything else in
+    # .csv/.json (matched_peaks*, resolution_*, config JSON, ...) is diagnostic output,
+    # not release material, so the filter is by suffix rather than opening the allowlist
+    # to every .csv/.json in the tree.
+    # .png is scoped the same way: only the slides deck's own figures/ folder,
+    # not the per-participant diagnostic PNGs elsewhere in the tree, which stay
+    # release material only via their embedding HTML report.
+    released_suffix_ext = {'.csv', '.json', '.png'}
+    released_suffixes = ('_cwa.csv', '_cwa.json', 'nexus_manifest.csv',
+                        'slides_stats.csv')
+    released_path_markers = (f"{os.sep}figures{os.sep}",)
     records = []
 
     for root, dirs, files in os.walk(input_folder):
@@ -51,8 +64,13 @@ def make_release(
 
         for file in files:
             _, ext = os.path.splitext(file)
-            if ext.lower() not in allowed_ext:
-                continue
+            ext = ext.lower()
+            if ext not in allowed_ext:
+                by_suffix = ext in released_suffix_ext and file.endswith(released_suffixes)
+                by_path = ext == '.png' and any(
+                    marker in (root + os.sep) for marker in released_path_markers)
+                if not (by_suffix or by_path):
+                    continue
 
             src_path = os.path.join(root, file)
             dest_dir = os.path.join(output_folder, rel_root)
@@ -90,7 +108,21 @@ def make_release(
             elif file.startswith("calmodel"):
                 description = "calibration model"
             elif file.startswith("ycalmodel"):
-                description = "relative intensity calibration model"                
+                description = "relative intensity calibration model"
+            elif file.endswith("_calibration.nxs"):
+                description = "NeXus calibration bundle (calibrants + reconstructable model)"
+            elif file.endswith(".nxs"):
+                description = "NeXus spectra"
+            elif file == "nexus_manifest.csv":
+                description = "NeXus export manifest"
+            elif "_cwa" in file:
+                description = "CWA 18133 §8 portable calibration"
+            elif file == "slides_deck.html":
+                description = "presentation deck"
+            elif file == "slides_stats.csv":
+                description = "presentation deck — quoted statistics"
+            elif f"{os.sep}figures{os.sep}" in (root + os.sep):
+                description = "presentation deck — figure"
             link = f"<a href='{rel_file_path}' target='_blank'>{file}</a>"
 
             records.append({

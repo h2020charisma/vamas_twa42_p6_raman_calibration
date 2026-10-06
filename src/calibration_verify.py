@@ -233,7 +233,8 @@ for key in upstream["spectracal_*"].keys():
                         profile=get_profile(tag), 
                         should_fit=True,
                         match_method = match_mode,
-                        stages=_stages
+                        stages=_stages,
+                        auto_reduce_degree = True
                     )
                 else:
                     df_calib = None
@@ -270,29 +271,42 @@ for key in upstream["spectracal_*"].keys():
                 traceback.print_exc()
             axis.grid()
 
-matched_peaks.to_csv(product["matched_peaks"], index=False)
+# assignment/monotonic matchers name the column "distance" (singular)
+if matched_peaks is not None and "distances" not in matched_peaks.columns and "distance" in matched_peaks.columns:
+    matched_peaks = matched_peaks.rename(columns={"distance": "distances"})
+_has_distances = matched_peaks is not None and "distances" in matched_peaks.columns
+# always write the product so the pipeline task does not fail on a missing file; with no
+# matches write just the header, so pd.read_csv downstream gets an empty frame, not an error
+_MATCHED_PEAKS_COLUMNS = ["spe", "reference", "distances", "inlier_mask", "match_mode",
+                          "before_after", "key", "sample", "optical_path", "laser_wl"]
+(matched_peaks if matched_peaks is not None else pd.DataFrame(columns=_MATCHED_PEAKS_COLUMNS)
+ ).to_csv(product["matched_peaks"], index=False)
 
-toc_heading("Matched sample peak distances: calibration effect summary", "h2")
-toc_heading("Robust statistics per stage: |distance| pairs above 20 cm⁻¹ are matching artifacts "
-            "(present before AND after calibration) and are excluded from the means, so a few "
-            "artifacts cannot mask or fake a regression. Median is reported alongside the mean "
-            "because a single bad optical path dominates a plain mean.", "p")
-_mp = matched_peaks.copy()
-_mp["absd"] = _mp["distances"].abs()
-_ok = _mp[_mp["absd"] <= 20]
-_overall = _ok.groupby("before_after")["absd"].agg(
-    robust_mean="mean", median="median", n="count").round(3)
-display(_overall)
-_per_op = _ok.groupby(["key", "optical_path", "laser_wl", "before_after"])["absd"].agg(
-    robust_mean="mean", median="median", n="count").round(2)
-_piv = _per_op["robust_mean"].unstack("before_after")
-if "1.original" in _piv.columns and "2.x-clbr" in _piv.columns:
-    _worse = _piv[_piv["2.x-clbr"] > _piv["1.original"] + 1.0]
-    toc_heading("Optical paths where x-calibration WORSENS the robust mean by > 1 cm⁻¹ "
-                "(empty table = calibration helps or is neutral everywhere):", "p")
-    display(_worse)
-toc_heading("Per optical path (robust mean / median / n):", "p")
-display(_per_op.unstack("before_after"))
+if not _has_distances:
+    logger.warning("matched_peaks is missing or has no 'distances' column; "
+                   "skipping the matched peak distances summary")
+else:
+    toc_heading("Matched sample peak distances: calibration effect summary", "h2")
+    toc_heading("Robust statistics per stage: |distance| pairs above 20 cm⁻¹ are matching artifacts "
+                "(present before AND after calibration) and are excluded from the means, so a few "
+                "artifacts cannot mask or fake a regression. Median is reported alongside the mean "
+                "because a single bad optical path dominates a plain mean.", "p")
+    _mp = matched_peaks.copy()
+    _mp["absd"] = _mp["distances"].abs()
+    _ok = _mp[_mp["absd"] <= 20]
+    _overall = _ok.groupby("before_after")["absd"].agg(
+        robust_mean="mean", median="median", n="count").round(3)
+    display(_overall)
+    _per_op = _ok.groupby(["key", "optical_path", "laser_wl", "before_after"])["absd"].agg(
+        robust_mean="mean", median="median", n="count").round(2)
+    _piv = _per_op["robust_mean"].unstack("before_after")
+    if "1.original" in _piv.columns and "2.x-clbr" in _piv.columns:
+        _worse = _piv[_piv["2.x-clbr"] > _piv["1.original"] + 1.0]
+        toc_heading("Optical paths where x-calibration WORSENS the robust mean by > 1 cm⁻¹ "
+                    "(empty table = calibration helps or is neutral everywhere):", "p")
+        display(_worse)
+    toc_heading("Per optical path (robust mean / median / n):", "p")
+    display(_per_op.unstack("before_after"))
 
 labels = ["original", f"{mode}-calibrated"]
 

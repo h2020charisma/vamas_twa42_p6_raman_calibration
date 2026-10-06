@@ -54,10 +54,12 @@ light source, per ASTM E2911.
 1. **Wavelength x-axis** — match neon peaks to NIST assignments; fit the axis.
 2. **Laser-zeroed Raman-shift x-axis** — apply the wavelength axis to silicon;
    the Si peak sets the laser zero, converting wavelength → Raman shift.
-3. **Spectral distribution + pixel resolution curves** — from neon FWHM on the
-   laser-zeroed axis.
-4. **Spectral resolution + SpeD:SRes curve** — calcite FWHM gives Raman
-   spectral resolution, adjusting the pixel-resolution curve.
+3. **Spectral distribution curve (SpeD) + pixel resolution curve (PRC)** —
+   from neon FWHM on the laser-zeroed axis.
+4. **Spectral resolution (SRes) + spectral resolution curve (SRC) +
+   SpeD:SRes curve** — calcite FWHM gives SRes, which rescales PRC into SRC;
+   see [`resolution_curves.md`](resolution_curves.md) for the full symbol
+   table and the exact SpeD:SRes equation.
 5. **Calibrated Raman-shift x-axis** — final adjustment from calcite + PST peak
    positions.
 

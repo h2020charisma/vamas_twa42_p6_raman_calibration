@@ -1,10 +1,39 @@
 # Resolution curves — definitions and calculation
 
 CWA 18133:2024 Figure 2, sections 3–4. Four related quantities, each a
-function of Raman shift over the calibrated x-axis: the **spectral
-distribution curve** (SpeD), the **pixel resolution curve**, the
-**spectral resolution curve** (SRes, from calcite), and the **SpeD:SRes
-curve**. This note defines each and points to the single shared
+function of Raman shift over the calibrated x-axis, plus two scalar values
+derived along the way. The CWA text is not fully consistent in its own
+symbols (see the terminology note below), so this doc fixes one vocabulary
+and uses it throughout:
+
+| Symbol | Kind | CWA clause | Meaning |
+|---|---|---|---|
+| **SpeD** | curve | §3.1.9 | spectral distribution curve — cm⁻¹ per pixel of the calibrated axis |
+| **PRC** | curve | §3.1.5 | pixel resolution curve — neon-FWHM-fitted instrument response |
+| **PRes** | scalar | §3.1.4 | PRC evaluated at the calcite line, 1085.91 cm⁻¹ |
+| **SRes** | scalar | §3.1.10 | spectral resolution at 1085.91 cm⁻¹, from the calcite FWHM via ASTM E2529 |
+| **SRC** | curve | §3.1.11 | spectral resolution curve — PRC rescaled by SRes / PRes |
+| **SpeD:SRes** | curve | Figure 2, panel 3 | SpeD divided by SRC (curve-to-curve), **not** by the scalar SRes |
+
+**Terminology note.** §3.1.10 and Figure 2 introduce **SRes** as the scalar
+calcite-derived value, but the "SpeD:SRes curve" label in Figure 2's third
+panel is only correct if read as SpeD divided by the *curve* built from that
+value (SRC), not the scalar itself — the CWA does not clearly distinguish the
+two uses of "SRes" in its own notation. This note keeps SRes strictly scalar
+and SRC strictly curve-valued to avoid that ambiguity; see §4 below for the
+exact equation and how it maps onto the code.
+
+Separately, §3.1.9 labels SpeD "spectral distribution", but what it defines
+(cm⁻¹ span covered by one detector pixel) is a **dispersion** quantity in the
+usual spectroscopy sense, not a distribution — "spectral distribution" more
+naturally refers to how Raman-scattered intensity is spread across
+wavelength/frequency, an unrelated quantity this pipeline does not compute.
+This doc keeps the CWA's own symbol **SpeD** for continuity with the code and
+CSV column names, but the more accurate name for §3.1.9 would be *spectral
+dispersion* (SDis / SDC for the curve) — worth revisiting if the CWA text
+itself is revised.
+
+This note defines each of the four curves and points to the single shared
 implementation.
 
 ## Where the code lives
@@ -48,7 +77,8 @@ NIST neon lines, laser-zeroing from the silicon 520.45 cm⁻¹ band) — see
 
 **CWA 18133 §3.1.9.** The Raman-shift width represented by each pixel of the
 calibrated axis — i.e. how coarse or fine the calibrated grid is at a given
-position, in cm⁻¹/pixel.
+position, in cm⁻¹/pixel. Despite the CWA's name for it, this is a
+*dispersion* quantity, not a distribution — see the terminology note above.
 
 ```python
 def spectral_distribution(spe_calibrated):
@@ -70,11 +100,12 @@ must not be read as a CWA pixel property. `resolution.py` detects this via
 annotates the plot / sets `uniform_grid=True` in the summary rather than
 silently mislabeling the curve.
 
-## 2. Pixel resolution curve
+## 2. Pixel resolution curve (PRC)
 
 **CWA 18133 §3.1.5.** How the instrument's line-spread function (FWHM) varies
 with position on the calibrated Raman-shift axis, derived purely from neon
-emission lines.
+emission lines. **PRes** (§3.1.4) is the scalar value of PRC evaluated at the
+calcite line position, 1085.91 cm⁻¹ — used in step 3 of the next section.
 
 Calculation (`fit_neon_peaks` + `fit_pixel_resolution_curve`):
 
@@ -93,11 +124,14 @@ Calculation (`fit_neon_peaks` + `fit_pixel_resolution_curve`):
    elsewhere, since extrapolating a low-order polynomial far outside the
    line-covered range is not trustworthy.
 
-## 3. Spectral resolution curve (SRes)
+## 3. Spectral resolution (SRes) and spectral resolution curve (SRC)
 
-**CWA 18133 §3.1.10 / §4, ASTM E2529.** The pixel resolution curve rescaled
-so it agrees with a single independent resolution measurement from the
-calcite ~1085.91 cm⁻¹ band — the **"laser effect"** correction.
+**CWA 18133 §3.1.10 (SRes, scalar) / §3.1.11 (SRC, curve) / §4, ASTM E2529.**
+SRes is the single calcite-derived resolution value; SRC is the pixel
+resolution curve (PRC) rescaled so it agrees with SRes at the calcite
+position — the **"laser effect"** correction. Keeping these as two symbols,
+one scalar and one curve, matters for §4 below, where the CWA's own notation
+does not clearly separate them.
 
 **Why only one point is needed, unlike the neon curve:** CWA §3.1.10 defines
 spectral resolution directly as the calcite FWHM (SRes ≡ calcite FWHM), and
@@ -112,13 +146,12 @@ response, giving access to true spectral resolution that neon cannot
 provide at all — but only at the one position calcite is measured. Rather
 than fit an independent curve from that single value, the method **reuses
 the shape already fitted from neon** and assumes only the *scale* differs
-between pixel resolution and spectral resolution (the "laser effect", e.g.
-contributions such as laser linewidth that neon is blind to but calcite
-reveals). One calcite point is exactly enough to fix that one scale factor
-— a single-point calibration of an existing curve, not an independent curve
-fit. This also means the whole spectral resolution curve stands or falls on
-that one point, which is why step 4 below guards it rather than trusting it
-unconditionally.
+between PRes and SRes (the "laser effect", e.g. contributions such as laser
+linewidth that neon is blind to but calcite reveals). One calcite point is
+exactly enough to fix that one scale factor — a single-point calibration of
+an existing curve, not an independent curve fit. This also means the whole
+of SRC stands or falls on that one point, which is why step 4 below guards
+it rather than trusting it unconditionally.
 
 Calculation (`fit_calcite_1085` + `spectral_resolution_e2529`):
 
@@ -132,38 +165,50 @@ Calculation (`fit_calcite_1085` + `spectral_resolution_e2529`):
    ```
 
    (cross-checked against ASTM E2529.)
-3. Evaluate the neon pixel-resolution curve at the calcite peak's position,
-   and take the ratio `laser_effect_ratio = SRes / pixel_res_curve(calcite_center)`.
+3. Evaluate PRC at the calcite peak's position — that value is **PRes**
+   (`neon_fwhm_1085` in the code) — and take the ratio
+   `laser_effect_ratio = SRes / PRes`.
 4. **Plausibility guard:** since neon FWHM is the noise floor (near-zero
    intrinsic linewidth) and calcite adds real molecular broadening on top of
-   it, SRes can never be meaningfully *below* the neon-derived pixel
-   resolution. If the ratio is below `SRES_MIN_RATIO` = 0.8 (allowing ~20 %
-   for the E2529 formula's stated accuracy) or `SRes <= 0`, the calcite fit
-   is treated as defective: the rescale is **not applied**, no spectral
-   resolution curve is drawn, and `sres_plausible=False` is recorded.
-5. Otherwise, the spectral resolution curve is the pixel resolution curve
-   scaled by that one ratio:
+   it, SRes can never be meaningfully *below* PRes. If the ratio is below
+   `SRES_MIN_RATIO` = 0.8 (allowing ~20 % for the E2529 formula's stated
+   accuracy) or `SRes <= 0`, the calcite fit is treated as defective: the
+   rescale is **not applied**, SRC is not drawn, and `sres_plausible=False`
+   is recorded.
+5. Otherwise, **SRC** is PRC scaled by that one ratio:
 
    ```python
-   spectral_res_curve = lambda x: laser_effect_ratio * pixel_res_curve(x)
+   SRC = lambda x: (SRes / PRes) * PRC(x)
    ```
 
-   i.e. same shape as the pixel resolution curve, anchored to match the
-   calcite-measured value at 1085.91 cm⁻¹. It is clipped to the same
-   neon-supported range as the pixel resolution curve.
+   i.e. same shape as PRC, anchored to match SRes at 1085.91 cm⁻¹. It is
+   clipped to the same neon-supported range as PRC. In the code, the array
+   holding SRC evaluated on the output grid is named `spectral_res` (see
+   `ResolutionResult.spectral_res`) — distinct from `spectral_resolution`,
+   the scalar SRes, held in the same result object. The array name reads
+   like the scalar and is easy to misread as one; they are not the same
+   thing, which matters for the next section.
 
 ## 4. SpeD:SRes curve
 
-**CWA Figure 2, third panel.** The ratio of spectral distribution to
-spectral resolution at each point of the calibrated axis:
+**CWA Figure 2, third panel.** Despite the panel's label, this is **SpeD
+divided by SRC** (curve over curve), evaluated pointwise — *not* SpeD
+divided by the scalar SRes. CWA §4 names the panel "SpeD:SRes" using SRes as
+shorthand for "the resolution curve derived using SRes", which is what SRC
+already is; read literally against §3.1.10's own scalar definition of SRes,
+the panel label is ambiguous. This doc's equation removes that ambiguity:
 
 ```python
-sped_sres = sped / spectral_res
+SpeD_SRes = SpeD / SRC        # curve / curve, evaluated at each x
 ```
+
+which is what the code computes (`sped_sres = sped / spectral_res`, where
+`spectral_res` — despite its name — already holds SRC sampled on the grid,
+per the note at the end of §3).
 
 Interpretable as "how many calibrated-axis pixels fit inside one resolution
 element" — a measure of whether the axis sampling is fine enough relative to
-the instrument's actual resolving power. It is NaN wherever `spectral_res`
+the instrument's actual resolving power. It is NaN wherever SRC
 is NaN (i.e., wherever there is no valid pixel resolution curve, or the
 calcite rescale was not applied because it failed the plausibility guard).
 
@@ -174,17 +219,20 @@ raw neon spectrum ──calibration──> calibrated neon spectrum
         │                                  │
         │ np.gradient(x)                   │ NIST-line matching + Gaussian fit
         ▼                                  ▼
-   SpeD curve                    neon (center, FWHM) points
+     SpeD curve                  neon (center, FWHM) points
                                             │ polyfit deg-2 (+ outlier reject)
                                             ▼
-                                  pixel resolution curve
-                                            │ x scale by SRes/pixel_res(calcite center)
+                                          PRC
+                                       (pixel resolution curve)
+                                            │ PRes = PRC(calcite center)
         │                                  ▼         ▲
-        │                        spectral resolution curve   calcite peak FWHM
-        │                                  │              (Voigt/Gaussian fit)
-        └──────────────divide──────────────┘              → ASTM E2529 formula
+        │                                 SRC    calcite peak FWHM
+        │                          (scaled by SRes/PRes)  (Voigt/Gaussian fit)
+        │                                  │              → ASTM E2529 → SRes
+        └──────────────divide──────────────┘
                         ▼
-                SpeD:SRes curve
+                  SpeD:SRes curve
+                (= SpeD / SRC, curve-to-curve)
 ```
 
 ## Related docs

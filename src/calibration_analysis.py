@@ -21,7 +21,6 @@ product = None
 upstream = None
 exclude = "P6_0301"
 context = ""
-sample_peaks = None
 # -
 
 logger = init_logging(Path(product["nb"]).parent , f"calibration_analysis.log")
@@ -42,7 +41,6 @@ for key in upstream["spectracal_*"].keys():
 
 
 matched_peaks_file = upstream["calibration_verify_xy"]["matched_peaks"]
-#matched_peaks_file = sample_peaks
 _matched_peaks = pd.read_csv(matched_peaks_file)
 matched_peaks = _matched_peaks if matched_peaks is None else pd.concat([matched_peaks, _matched_peaks])
 

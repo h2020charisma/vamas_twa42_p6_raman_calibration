@@ -127,6 +127,29 @@ tasks:
       mode: ["x", "xy"]
 
 
+  # CWA 18133 §8 / NXcalibration: the calibration workflow as a self-describing
+  # NeXus record — calibrants, processing, and the reconstructable model.
+  - source: spectraframe_nexus.py
+    name: "spectranexus_[[key]]"
+    upstream: ["spectraframe_*", "spectracal_*", "spectracaly_*"]
+    product:
+      nb: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/spectranexus.{{report_format}}"
+      nexus: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/nexus"
+      manifest: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/nexus_manifest.csv"
+    params:
+      config_templates: "{{config_templates}}"
+      config_root: "{{config_root}}"
+      neon_tag: "{{ne_tag}}"
+      si_tag: "{{si_tag}}"
+      match_mode: "{{match_mode}}"
+      interpolator: "{{interpolator}}"
+    nbconvert_export_kwargs:
+        # optionally hide the code from the report
+        exclude_input: True
+    grid:
+      key: "{{calibration_key}}"
+
+
   - source: calibration_analysis.py
     upstream: ["spectracal_*", "calibration_verify_xy"]
     name: "calibration_analysis"    
@@ -137,7 +160,6 @@ tasks:
     params:
       exclude: ""
       context: "Match mode {{match_mode}} Interpolators {{interpolator}} Fit Ne peaks {{fit_ne_peaks}}"
-      sample_peaks: "C:\\Users\\jelia\\Nextcloud\\Projects\\VAMAS\\VAMAS_P6_analysis\\matched_peaks_samples-1.csv"
     nbconvert_export_kwargs:
         # optionally hide the code from the report
         exclude_input: True            
@@ -159,8 +181,50 @@ tasks:
         exclude_input: True
 
 
+  # Presentation deck: cohort results and per-participant examples, generated
+  # from the assessment products so the numbers always match the run that
+  # produced them and regenerate when the options change.
+  - source: slides.py
+    name: "slides"
+    upstream: ["calibration_verify_xy", "calibration_analysis",
+               "resolution_compare", "spectrares_*", "spectracaly_*",
+               "spectraframe_*", "spectracal_*", "overview"]
+    product:
+      nb: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/assessment/slides.{{report_format}}"
+      deck: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/assessment/slides_deck.html"
+      poster: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/assessment/poster.html"
+      stats: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/assessment/slides_stats.csv"
+    params:
+      context: "Match mode {{match_mode}} Interpolators {{interpolator}} Fit Ne peaks {{fit_ne_peaks}}"
+      meeting: "Raman metrology meeting"
+      title: "VAMAS TWA42 P6 - Raman calibration round robin"
+      artifact_cm1: 20.0
+      min_example_peaks: 5
+      # participation accounting: datasets loaded vs datasets calibrated, so the
+      # deck can state how many laboratories are represented and why others are not
+      dataset_key: "{{dataset_key}}"
+      calibration_key: "{{calibration_key}}"
+      total_labs: 25
+      # needed to load the spectra of the worked examples
+      config_templates: "{{config_templates}}"
+      config_root: "{{config_root}}"
+      neon_tag: "{{ne_tag}}"
+      si_tag: "{{si_tag}}"
+      verify_tags: "CAL,PST"
+      spectrastream_screenshot_derive: "..\\examples\\spectrastream1.png"
+      spectrastream_screenshot_verify: "..\\examples\\spectrastream2.png"
+      # ICORS 2026 poster: title/authors/affiliations exactly as submitted in
+      # Abstract_ICORS_VAMAS_P6_poster.txt, not derived from the run.
+      poster_title: "Automated Processing Pipeline for Wavenumber and Relative Intensity Calibration of Raman Spectrometers: An Interlaboratory Study"
+      poster_authors: "Nina Jeliazkova<sup>1</sup>, Luchesar Iliev<sup>1</sup>, Nikolay Kochev<sup>1</sup>, Nicolas Coca-Lopez<sup>2</sup>, Miguel A. Ba&ntilde;ares<sup>2</sup>, Ankit Raj<sup>3</sup>, Erlon H. Martins Ferreira<sup>4</sup>, Nobuyasu Itoh<sup>5</sup>, Angela R. Hight Walker<sup>6</sup>, Enrique Lozano Diz<sup>7</sup>, Raquel Portela<sup>2</sup>"
+      poster_affiliations: "1 Ideaconsult Ltd., Sofia, Bulgaria &middot; 2 Instituto de Catalisis y Petroleoquimica (ICP), CSIC, Madrid, Spain &middot; 3 Department of Chemistry, Gakushuin University, Tokyo &middot; 4 Instituto Nacional de Metrologia, Qualidade e Tecnologia (Inmetro), Rio de Janeiro, Brazil &middot; 5 National Institute of Advanced Industrial Science and Technology (AIST), Tsukuba, Ibaraki, Japan &middot; 6 National Institute of Standards and Technology (NIST), Gaithersburg, MD, USA &middot; 7 ELODIZ Ltd, UK"
+    nbconvert_export_kwargs:
+        # optionally hide the code from the report
+        exclude_input: True
+
+
   - source: release.py
-    upstream: ["calibration_verify_*"]
+    upstream: ["calibration_verify_*", "spectranexus_*", "slides"]
     product: 
       nb: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/assessment/release.html"
     params:

@@ -1,14 +1,15 @@
-"""Wiring regression tests for src/pipeline.yaml — no data, milliseconds. See
+"""Wiring regression tests for src/pipeline.yaml and src/pipeline.demo.yaml — no data, milliseconds. See
 docs/nexus_export_plan.md."""
 from pathlib import Path
 
 import yaml
 
 PIPELINE_YAML = Path(__file__).resolve().parents[1] / "src" / "pipeline.yaml"
+PIPELINE_DEMO_YAML = Path(__file__).resolve().parents[1] / "src" / "pipeline.demo.yaml"
 
 
-def _load_tasks():
-    with open(PIPELINE_YAML, encoding="utf-8") as f:
+def _load_tasks(path=PIPELINE_YAML):
+    with open(path, encoding="utf-8") as f:
         doc = yaml.safe_load(f)
     return doc["tasks"]
 
@@ -88,3 +89,25 @@ def test_slides_passes_the_run_configuration_into_the_deck():
     context = task["params"]["context"]
     for placeholder in ("{{match_mode}}", "{{interpolator}}", "{{fit_ne_peaks}}"):
         assert placeholder in context
+
+
+def test_demo_pipeline_includes_the_resolution_task():
+    """The demo is what most people run, so the CWA 18133 sections 3 & 4 curves
+    have to be in it. Dropping the task stays invisible: the other tasks still
+    pass and the demo report simply has no resolution section."""
+    task = _find(_load_tasks(PIPELINE_DEMO_YAML), "spectrares_[[key]]")
+    assert task is not None, "spectrares_[[key]] task missing from pipeline.demo.yaml"
+    assert task["source"] == "spectraframe_resolution.py"
+    # calmodels come from spectracal_*; the raw spectra from spectraframe_*
+    assert set(task["upstream"]) == {"spectraframe_*", "spectracal_*"}
+    assert task["grid"]["key"] == "{{dataset_key}}"
+    assert set(task["product"]) == {"nb", "peaks", "curves", "summary"}
+
+
+def test_demo_resolution_task_passes_neon_and_calcite_tags():
+    """select_spectrum matches on the sample name, so a missing calcite tag
+    silently degrades the run to neon-only curves instead of failing."""
+    params = _find(_load_tasks(PIPELINE_DEMO_YAML),
+                   "spectrares_[[key]]")["params"]
+    assert params["neon_tag"] == "{{ne_tag}}"
+    assert params["calcite_tag"] == "{{calcite_tag}}"

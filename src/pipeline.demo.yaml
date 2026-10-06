@@ -32,7 +32,27 @@ tasks:
       apap_tag: "{{apap_tag}}"
       fit_neon_peaks: "{{fit_ne_peaks}}"
       match_mode: "{{match_mode}}"
-      interpolator: "{{interpolator}}"   
+      interpolator: "{{interpolator}}"
+    grid:
+      key: "{{dataset_key}}"
+
+
+  # CWA 18133 Figure 2 sections 3 & 4: spectral distribution, pixel/spectral
+  # resolution and SpeD:SRes curves from the x-calibrated Ne and calcite spectra
+  - source: spectraframe_resolution.py
+    name: "spectrares_[[key]]"
+    product:
+      nb: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/spectrares.{{report_format}}"
+      peaks: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/resolution_peaks.csv"
+      curves: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/resolution_curves.csv"
+      summary: "{{config_output}}/processed_{{fit_ne_peaks}}_{{match_mode}}_{{interpolator}}/[[key]]/resolution_summary.csv"
+    upstream: ["spectraframe_*", "spectracal_*"]
+    params:
+      config_templates: "{{config_templates}}"
+      config_root: "{{config_root}}"
+      neon_tag: "{{ne_tag}}"
+      calcite_tag: "{{calcite_tag}}"
+      curve_fit_degree: 2
     grid:
       key: "{{dataset_key}}"
 

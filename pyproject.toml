@@ -21,7 +21,7 @@ dependencies = [
     "numpy~=1.26.4",
     "openpyxl~=3.1.5",
     "ploomber~=0.23.2",
-    "ramanchada2~=1.4.0",
+    "ramanchada2~=1.5.0",
     "requests~=2.31.0",
     "scikit-learn~=1.4.2",
     "scipy~=1.11.4",
@@ -31,9 +31,6 @@ dependencies = [
 [project.urls]
 homepage = "https://www.vamas.org/twa42/documents/2024_vamas_twa42_p6_raman_calibration.pdf"
 repository = "https://github.com/h2020charisma/vamas_twa42_p6_raman_calibration"
-
-[tool.uv.sources]
-ramanchada2 = { path = "../ramanchada2", editable = true }
 
 [dependency-groups]
 dev = ["pytest~=8.4"]

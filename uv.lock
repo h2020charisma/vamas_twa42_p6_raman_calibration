@@ -3530,8 +3530,8 @@ wheels = [
 
 [[package]]
 name = "ramanchada2"
-version = "1.3.1"
-source = { editable = "../ramanchada2" }
+version = "1.5.0"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "brukeropusreader" },
     { name = "emd" },
@@ -3549,24 +3549,9 @@ dependencies = [
     { name = "statsmodels" },
     { name = "uncertainties" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "brukeropusreader", specifier = "==1.*" },
-    { name = "emd", specifier = "==0.7.*" },
-    { name = "h5py", specifier = "==3.*" },
-    { name = "lmfit", specifier = "==1.*" },
-    { name = "matplotlib", specifier = "==3.*" },
-    { name = "numpy", specifier = ">=1.0,<3.0" },
-    { name = "pandas", specifier = "==2.*" },
-    { name = "pydantic", specifier = "~=2.0" },
-    { name = "renishawwire", specifier = "==0.1.*" },
-    { name = "scikit-learn", specifier = "==1.*" },
-    { name = "scipy", specifier = ">=1.8.0,<2.0" },
-    { name = "spc-io", specifier = "~=0.2.0" },
-    { name = "spe2py", specifier = "~=2.0" },
-    { name = "statsmodels", specifier = "==0.14.*" },
-    { name = "uncertainties", specifier = "==3.*" },
+sdist = { url = "https://files.pythonhosted.org/packages/42/d1/d4121cbb77263ec49b268e5027104118ef08aebb3c3b2cc045d49f0ed416/ramanchada2-1.5.0.tar.gz", hash = "sha256:70b9e829a4673e933f63b183afc13c7038843a08f49e9266cdc6fe136d4288da", size = 5962941, upload-time = "2026-10-05T22:51:14.135Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/bd/c3/279489b987c75a253b1aaf9fcb317dc7c0ca1c6382c12c83223877fa112b/ramanchada2-1.5.0-py3-none-any.whl", hash = "sha256:0ff2131c312b71b216a47e934acc6e519d6944250423c5b2a7d4d3130180dac5", size = 6123862, upload-time = "2026-10-05T22:51:11.692Z" },
 ]
 
 [[package]]
@@ -4298,7 +4283,7 @@ requires-dist = [
     { name = "numpy", specifier = "~=1.26.4" },
     { name = "openpyxl", specifier = "~=3.1.5" },
     { name = "ploomber", specifier = "~=0.23.2" },
-    { name = "ramanchada2", editable = "../ramanchada2" },
+    { name = "ramanchada2", specifier = "~=1.5.0" },
     { name = "requests", specifier = "~=2.31.0" },
     { name = "scikit-learn", specifier = "~=1.4.2" },
     { name = "scipy", specifier = "~=1.11.4" },

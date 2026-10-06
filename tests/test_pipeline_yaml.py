@@ -2,6 +2,7 @@
 docs/nexus_export_plan.md."""
 from pathlib import Path
 
+import re
 import yaml
 
 PIPELINE_YAML = Path(__file__).resolve().parents[1] / "src" / "pipeline.yaml"
@@ -111,3 +112,50 @@ def test_demo_resolution_task_passes_neon_and_calcite_tags():
                    "spectrares_[[key]]")["params"]
     assert params["neon_tag"] == "{{ne_tag}}"
     assert params["calcite_tag"] == "{{calcite_tag}}"
+
+
+def test_demo_pipeline_includes_overview():
+    """The overview page is the entry point of the report; without it the demo
+    drops the reader straight into per-participant products."""
+    task = _find(_load_tasks(PIPELINE_DEMO_YAML), "overview")
+    assert task is not None, "overview task missing from pipeline.demo.yaml"
+    assert task["source"] == "overview.py"
+    assert task["upstream"] == []
+    assert set(task["product"]) == {"nb", "data"}
+
+
+def test_demo_pipeline_includes_calibration_analysis():
+    task = _find(_load_tasks(PIPELINE_DEMO_YAML), "calibration_analysis")
+    assert task is not None, "calibration_analysis missing from pipeline.demo.yaml"
+    assert task["source"] == "calibration_analysis.py"
+    assert set(task["upstream"]) == {"spectracal_*", "calibration_verify_xy"}
+    assert set(task["product"]) == {"nb", "matched_peaks", "analysis"}
+
+
+def test_demo_spectracal_declares_the_matched_peaks_product():
+    """calibration_analysis reads upstream["spectracal_*"][key]["matched_peaks"].
+    If the product is not declared upstream, that lookup raises a KeyError with
+    nothing pointing at the real cause."""
+    task = _find(_load_tasks(PIPELINE_DEMO_YAML), "spectracal_[[key]]")
+    assert "matched_peaks" in task["product"]
+
+
+def test_demo_pipeline_includes_resolution_compare():
+    task = _find(_load_tasks(PIPELINE_DEMO_YAML), "resolution_compare")
+    assert task is not None, "resolution_compare missing from pipeline.demo.yaml"
+    assert task["source"] == "resolution_compare.py"
+    assert set(task["upstream"]) == {"spectrares_*"}
+    assert set(task["product"]) == {"nb", "summary", "envelope"}
+
+
+def test_no_task_param_is_an_absolute_machine_path():
+    """A param pointing into a developer's own folder pins the run to one
+    machine. The calibration_analysis sample_peaks param used to be exactly
+    that, and the script never even read it."""
+    offenders = []
+    for path in (PIPELINE_YAML, PIPELINE_DEMO_YAML):
+        for task in _load_tasks(path):
+            for name, value in (task.get("params") or {}).items():
+                if re.search(r"[A-Za-z]:[\\/]", str(value)):
+                    offenders.append(f"{path.name}:{task.get('name')}.{name}")
+    assert offenders == []

@@ -160,7 +160,6 @@ tasks:
     params:
       exclude: ""
       context: "Match mode {{match_mode}} Interpolators {{interpolator}} Fit Ne peaks {{fit_ne_peaks}}"
-      sample_peaks: "C:\\Users\\jelia\\Nextcloud\\Projects\\VAMAS\\VAMAS_P6_analysis\\matched_peaks_samples-1.csv"
     nbconvert_export_kwargs:
         # optionally hide the code from the report
         exclude_input: True            
